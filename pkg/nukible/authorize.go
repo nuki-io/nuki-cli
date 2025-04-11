@@ -48,13 +48,15 @@ func (n *NukiBle) Authorize(mac string) error {
 	if len(characteristics) != 1 {
 		panic(fmt.Sprintf("Expected exactly one GDIO characteristic, got %d", len(characteristics)))
 	}
-
 	gdio := characteristics[0]
+	fmt.Println("Characteristic", gdio.String())
+
 	sem := make(chan int, 1)
 	sem <- 1
 	gdio.EnableNotifications(func(buf []byte) { onGdioNotify(buf, sem) })
 	fmt.Println("Writing request for key exchange")
-	gdio.WriteWithoutResponse([]byte{0x01, 0x00, 0x03, 0x00, 0x27, 0xA7})
+	// NewUnencryptedCommand(RequestData, PublicKey)
+	gdio.Write([]byte{0x01, 0x00, 0x03, 0x00, 0x27, 0xA7})
 	fmt.Println("Waiting for response")
 	sem <- 1
 
