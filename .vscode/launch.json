@@ -13,12 +13,20 @@
             "args": ["devices", "scan"]
         },
         {
-            "name": "Debug (devices authorize)",
+            "name": "Debug macOS (devices authorize)",
             "type": "go",
             "request": "launch",
             "mode": "debug",
             "program": "${workspaceFolder}",
             "args": ["devices", "authorize", "0d35dde1-6a81-4459-a63d-e94735d2f305"]
+        },
+        {
+            "name": "Debug Linux (devices authorize)",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "program": "${workspaceFolder}",
+            "args": ["devices", "authorize", "54:D2:72:91:C5:FC"]
         }
     
     ]
