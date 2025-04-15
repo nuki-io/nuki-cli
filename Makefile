@@ -8,3 +8,6 @@ bin_name=nukictl
 .PHONY:
 build:
 	go build -ldflags=${linker_flags} -o ${bin_name} .
+
+test:
+	go test ./...
