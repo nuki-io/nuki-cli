@@ -1,31 +1,6 @@
-package nukible
+package blecommands
 
-import (
-	"encoding/binary"
-
-	"tinygo.org/x/bluetooth"
-)
-
-type NukiBle struct {
-	adapter *bluetooth.Adapter
-	devices map[string]bluetooth.ScanResult
-}
-
-func NewNukiBle() (*NukiBle, error) {
-	adapter := bluetooth.DefaultAdapter
-	err := adapter.Enable()
-
-	if err != nil {
-		return nil, err
-	}
-	return &NukiBle{
-		adapter: adapter,
-	}, nil
-}
-
-func (n *NukiBle) GetDevices() map[string]bluetooth.ScanResult {
-	return n.devices
-}
+import "encoding/binary"
 
 type Command uint16
 
@@ -96,12 +71,21 @@ func NewUnencryptedCommand(cmd Command, payload []byte) UnencryptedCommand {
 	}
 }
 
+func NewUnencryptedRequestData(request Command) UnencryptedCommand {
+	payload := make([]byte, 2)
+	binary.LittleEndian.PutUint16(payload, uint16(request))
+	return UnencryptedCommand{
+		command: RequestData,
+		payload: payload,
+	}
+}
+
 func (c *UnencryptedCommand) ToMessage() []byte {
 	res := make([]byte, 2+len(c.payload))
-	binary.BigEndian.PutUint16(res, uint16(c.command))
-	for i := 0; i < len(c.payload); i++ {
-		res[i+2] = c.payload[i]
+	binary.LittleEndian.PutUint16(res, uint16(c.command))
+	for i, x := range c.payload {
+		res[i+2] = x
 	}
-	res = binary.BigEndian.AppendUint16(res, CRC(res))
+	res = binary.LittleEndian.AppendUint16(res, CRC(res))
 	return res
 }

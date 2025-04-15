@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"go.nuki.io/nuki/nukictl/pkg/bleflows"
 	"go.nuki.io/nuki/nukictl/pkg/nukible"
 )
 
@@ -22,7 +23,9 @@ var authorizeCmd = &cobra.Command{
 			return
 		}
 		ble.Scan(10 * time.Second)
-		err = ble.Authorize(args[0])
+		flow := bleflows.NewFlow(ble)
+
+		err = flow.Authorize(args[0])
 		if err != nil {
 			log.Printf("Failed to authorize. %s\n", err.Error())
 			return
