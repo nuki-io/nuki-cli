@@ -28,3 +28,7 @@ func FromDeviceResponse(b []byte) *BleResponse {
 	}
 	return r
 }
+
+func (r *BleResponse) GetPayload() []byte {
+	return r.payload
+}
