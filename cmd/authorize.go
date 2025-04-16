@@ -22,7 +22,7 @@ var authorizeCmd = &cobra.Command{
 			log.Printf("Failed to start scan. %s\n", err.Error())
 			return
 		}
-		ble.Scan(10 * time.Second)
+		ble.ScanForDevice(args[0], 10*time.Second)
 		flow := bleflows.NewFlow(ble)
 
 		err = flow.Authorize(args[0])
