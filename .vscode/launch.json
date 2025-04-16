@@ -27,7 +27,14 @@
             "mode": "debug",
             "program": "${workspaceFolder}",
             "args": ["devices", "authorize", "54:D2:72:91:C5:FC"]
+        },
+        {
+            "name": "Debug Linux (devices lock)",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "program": "${workspaceFolder}",
+            "args": ["devices", "lock", "54:D2:72:91:C5:FC", "1"]
         }
-    
     ]
 }

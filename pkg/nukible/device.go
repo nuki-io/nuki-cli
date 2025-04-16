@@ -11,7 +11,8 @@ type Device struct {
 	services        []bluetooth.DeviceService
 	characteristics []bluetooth.DeviceCharacteristic
 
-	pairingGdioChar bluetooth.DeviceCharacteristic
+	pairingGdioChar    bluetooth.DeviceCharacteristic
+	keyturnerUsdioChar bluetooth.DeviceCharacteristic
 }
 
 func (n *Device) DiscoverServicesAndCharacteristics(services []bluetooth.UUID, chars []bluetooth.UUID) error {
@@ -55,10 +56,54 @@ func (n *Device) DiscoverPairing() error {
 	return nil
 }
 
+func (n *Device) DiscoverKeyturnerUsdio() error {
+	err := n.DiscoverServicesAndCharacteristics(
+		[]bluetooth.UUID{KeyturnerService},
+		[]bluetooth.UUID{KeyturnerUsdioCharacteristic},
+	)
+	if err != nil {
+		return fmt.Errorf("Could not discover any Keyturner services or characteristics. %s", err.Error())
+	}
+	if len(n.services) != 1 {
+		return fmt.Errorf("Expected exactly one Keyturner service, got %d", len(n.services))
+	}
+	if len(n.characteristics) != 1 {
+		return fmt.Errorf("Expected exactly one USDIO characteristic, got %d", len(n.characteristics))
+	}
+	n.keyturnerUsdioChar = n.characteristics[0]
+	fmt.Println("Characteristic", n.keyturnerUsdioChar.String())
+	return nil
+}
+
 func (n *Device) Disconnect() {
 	n.btDev.Disconnect()
 	n.services = make([]bluetooth.DeviceService, 0)
 	n.characteristics = make([]bluetooth.DeviceCharacteristic, 0)
+}
+
+func (n *Device) WritePairing(data []byte) []byte {
+	return n.write(n.pairingGdioChar, data)
+}
+
+func (n *Device) WriteUsdio(data []byte) []byte {
+	return n.write(n.keyturnerUsdioChar, data)
+}
+
+func (n *Device) write(char bluetooth.DeviceCharacteristic, data []byte) []byte {
+	sem := make(chan int, 1)
+	sem <- 1
+
+	fmt.Printf("Writing bytes to characteristic %x\n", data)
+	rxData := make([]byte, 0)
+	char.EnableNotifications(func(buf []byte) { rxData = onGdioNotify(buf, sem) })
+	n.osWrite(char, data)
+
+	fmt.Println("Waiting for response")
+	sem <- 1
+	// disable notifications again - TODO: sensible, or should we just enable it once?
+	char.EnableNotifications(nil)
+
+	return rxData
 }
 
 func onGdioNotify(buf []byte, sem chan int) []byte {

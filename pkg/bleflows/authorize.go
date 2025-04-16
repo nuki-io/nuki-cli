@@ -28,7 +28,7 @@ func (f *Flow) Authorize(mac string) error {
 	ctx := &AuthorizeContext{}
 	fmt.Println("Requesting SL public key")
 	cmd := blecommands.NewUnencryptedRequestData(blecommands.PublicKey)
-	res := blecommands.FromDeviceResponse(device.Write(cmd.ToMessage()))
+	res := blecommands.FromDeviceResponse(device.WritePairing(cmd.ToMessage()))
 	ctx.SlPublicKey = res.GetPayload()
 	fmt.Printf("SL public key: %x\n", ctx.SlPublicKey)
 
@@ -41,7 +41,7 @@ func (f *Flow) Authorize(mac string) error {
 
 	fmt.Println("Sending public key:", ctx.CliPublicKey)
 	cmd = blecommands.NewUnencryptedCommand(blecommands.PublicKey, ctx.CliPublicKey)
-	res = blecommands.FromDeviceResponse(device.Write(cmd.ToMessage()))
+	res = blecommands.FromDeviceResponse(device.WritePairing(cmd.ToMessage()))
 	challenge := res.GetPayload()
 	fmt.Printf("Received challenge: %x\n", challenge)
 
@@ -53,7 +53,7 @@ func (f *Flow) Authorize(mac string) error {
 	cmd = blecommands.NewUnencryptedCommand(
 		blecommands.AuthorizationAuthenticator,
 		authenticator)
-	res = blecommands.FromDeviceResponse(device.Write(cmd.ToMessage()))
+	res = blecommands.FromDeviceResponse(device.WritePairing(cmd.ToMessage()))
 	challenge = res.GetPayload()
 	fmt.Printf("Received challenge: %x\n", challenge)
 
@@ -63,7 +63,7 @@ func (f *Flow) Authorize(mac string) error {
 		[]byte{0x00},                   // App,
 		[]byte{0x27, 0xED, 0x7E, 0x18}, // From the example. should be random for each app
 		appName[:],
-		GetNonce(),
+		GetNonce32(),
 	)
 	authenticator = ctx.GetMessageAuthenticator(payload, challenge)
 
@@ -74,7 +74,7 @@ func (f *Flow) Authorize(mac string) error {
 			payload,
 		),
 	)
-	res = blecommands.FromDeviceResponse(device.Write(cmd.ToMessage()))
+	res = blecommands.FromDeviceResponse(device.WritePairing(cmd.ToMessage()))
 	ctx.AuthId = res.GetPayload()[32 : 32+4]
 	fmt.Printf("Received AuthId: %x\n", ctx.AuthId)
 	nonceK := res.GetPayload()[52:]
@@ -88,7 +88,7 @@ func (f *Flow) Authorize(mac string) error {
 			ctx.AuthId,
 		),
 	)
-	res = blecommands.FromDeviceResponse(device.Write(cmd.ToMessage()))
+	res = blecommands.FromDeviceResponse(device.WritePairing(cmd.ToMessage()))
 	complete := res.GetPayload()
 	fmt.Printf("Complete: %x\n", complete)
 	ctx.DumpJson()
@@ -98,8 +98,14 @@ func (f *Flow) Authorize(mac string) error {
 	return nil
 }
 
-func GetNonce() []byte {
+func GetNonce32() []byte {
 	var buf [32]byte
+	crypto_rand.Read(buf[:])
+	return buf[:]
+}
+
+func GetNonce24() []byte {
+	var buf [24]byte
 	crypto_rand.Read(buf[:])
 	return buf[:]
 }

@@ -1,7 +1,6 @@
 package blecommands
 
 import (
-	"encoding/hex"
 	"fmt"
 
 	"golang.org/x/crypto/nacl/secretbox"
@@ -15,10 +14,9 @@ type crypto struct {
 	key []byte
 }
 
-func New(sharedKey string) Crypto {
-	key, _ := hex.DecodeString(sharedKey)
+func New(sharedKey []byte) Crypto {
 	return &crypto{
-		key: key,
+		key: sharedKey,
 	}
 }
 

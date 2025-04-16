@@ -1,6 +1,9 @@
 package blecommands
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"slices"
+)
 
 type Command uint16
 
@@ -59,6 +62,22 @@ const (
 	SimpleLockAction            Command = 0x0100
 )
 
+type Action uint8
+
+var (
+	Unlock Action = 0x01
+	Lock   Action = 0x02
+
+	Unlatch          Action = 0x03
+	LockAndGo        Action = 0x04
+	LockAndGoUnlatch Action = 0x05
+	FullLock         Action = 0x06
+
+	FobAction1 Action = 0x81
+	FobAction2 Action = 0x82
+	FobAction3 Action = 0x83
+)
+
 type UnencryptedCommand struct {
 	command Command
 	payload []byte
@@ -88,4 +107,47 @@ func (c *UnencryptedCommand) ToMessage() []byte {
 	}
 	res = binary.LittleEndian.AppendUint16(res, CRC(res))
 	return res
+}
+
+type EncryptedCommand struct {
+	crypto  Crypto
+	authId  []byte
+	command Command
+	payload []byte
+}
+
+func NewEncryptedCommand(crypto Crypto, authId []byte, cmd Command, payload []byte) EncryptedCommand {
+	return EncryptedCommand{
+		crypto:  crypto,
+		authId:  authId,
+		command: cmd,
+		payload: payload,
+	}
+}
+
+func NewEncryptedRequestData(crypto Crypto, authId []byte, request Command) EncryptedCommand {
+	payload := make([]byte, 2)
+	binary.LittleEndian.PutUint16(payload, uint16(request))
+	return EncryptedCommand{
+		crypto:  crypto,
+		authId:  authId,
+		command: RequestData,
+		payload: payload,
+	}
+}
+
+func (c *EncryptedCommand) ToMessage(nonce []byte) []byte {
+	pdata := make([]byte, 0, 4+2+len(c.payload)+2)
+	pdata = append(pdata, c.authId...)
+	pdata = binary.LittleEndian.AppendUint16(pdata, uint16(c.command))
+	pdata = append(pdata, c.payload...)
+	pdata = binary.LittleEndian.AppendUint16(pdata, CRC(pdata))
+
+	pdataEnc, _ := c.crypto.Encrypt(nonce, pdata)
+
+	adata := make([]byte, 0, 24+4+2)
+	adata = append(adata, nonce...)
+	adata = append(adata, c.authId...)
+	adata = binary.LittleEndian.AppendUint16(adata, uint16(len(pdataEnc)))
+	return slices.Concat(adata, pdataEnc)
 }
