@@ -23,32 +23,30 @@ func (f *Flow) Authorize(mac string) error {
 	}
 	device.DiscoverPairing()
 
+	ctx := &AuthorizeContext{}
 	fmt.Println("Requesting SL public key")
 	cmd := blecommands.NewUnencryptedRequestData(blecommands.PublicKey)
 	res := blecommands.FromDeviceResponse(device.Write(cmd.ToMessage()))
-	slPubKey := res.GetPayload()
-	fmt.Printf("SL public key: %x\n", slPubKey)
+	ctx.slPublicKey = res.GetPayload()
+	fmt.Printf("SL public key: %x\n", ctx.slPublicKey)
 
 	pubKey, privKey, err := box.GenerateKey(crypto_rand.Reader)
-
+	ctx.cliPublicKey = pubKey[:]
+	ctx.cliPrivateKey = privKey[:]
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println("Sending public key:", pubKey)
-	cmd = blecommands.NewUnencryptedCommand(blecommands.PublicKey, pubKey[:])
+	fmt.Println("Sending public key:", ctx.cliPublicKey)
+	cmd = blecommands.NewUnencryptedCommand(blecommands.PublicKey, ctx.cliPublicKey)
 	res = blecommands.FromDeviceResponse(device.Write(cmd.ToMessage()))
 	challenge := res.GetPayload()
 	fmt.Printf("Received challenge: %x\n", challenge)
 
-	sharedKey := [32]byte{}
-	box.Precompute(&sharedKey, (*[32]byte)(slPubKey), privKey)
-	fmt.Printf("Calculated shared key: %x\n", sharedKey)
+	ctx.CalculateSharedKey()
+	fmt.Printf("Calculated shared key: %x\n", ctx.sharedKey)
 
-	h := hmac.New(sha256.New, sharedKey[:])
-	h.Write(slices.Concat(pubKey[:], slPubKey, challenge))
-	authenticator := h.Sum(nil)
-
+	authenticator := ctx.GetMessageAuthenticator(ctx.cliPublicKey, ctx.slPublicKey, challenge)
 	fmt.Printf("Sending authenticator: %x\n", authenticator)
 	cmd = blecommands.NewUnencryptedCommand(
 		blecommands.AuthorizationAuthenticator,
@@ -65,9 +63,7 @@ func (f *Flow) Authorize(mac string) error {
 		appName[:],
 		GetNonce(),
 	)
-	h = hmac.New(sha256.New, sharedKey[:])
-	h.Write(slices.Concat(payload, challenge))
-	authenticator = h.Sum(nil)
+	authenticator = ctx.GetMessageAuthenticator(payload, challenge)
 
 	cmd = blecommands.NewUnencryptedCommand(
 		blecommands.AuthorizationData,
@@ -82,9 +78,7 @@ func (f *Flow) Authorize(mac string) error {
 	nonceK := res.GetPayload()[52:]
 	fmt.Printf("Received nonceK: %x\n", nonceK)
 
-	h = hmac.New(sha256.New, sharedKey[:])
-	h.Write(slices.Concat(authId, nonceK))
-	authenticator = h.Sum(nil)
+	authenticator = ctx.GetMessageAuthenticator(authId, nonceK)
 	cmd = blecommands.NewUnencryptedCommand(
 		blecommands.AuthorizationIDConfirmation,
 		slices.Concat(
@@ -105,4 +99,42 @@ func GetNonce() []byte {
 	var buf [32]byte
 	crypto_rand.Read(buf[:])
 	return buf[:]
+}
+
+type AuthorizeContext struct {
+	cliPublicKey  []byte
+	cliPrivateKey []byte
+	slPublicKey   []byte
+	sharedKey     []byte
+}
+
+func (ac *AuthorizeContext) SetCliKeys(priv []byte, pub []byte) {
+	ac.cliPrivateKey = priv
+	ac.cliPublicKey = pub
+}
+func (ac *AuthorizeContext) SetSmartlockPublicKey(pub []byte) {
+	ac.slPublicKey = pub
+}
+func (ac *AuthorizeContext) GetSharedKey() []byte {
+	return ac.sharedKey
+}
+func (ac *AuthorizeContext) GetCliPublicKey() []byte {
+	return ac.cliPublicKey
+}
+func (ac *AuthorizeContext) GetCliPrivateKey() []byte {
+	return ac.cliPrivateKey
+}
+func (ac *AuthorizeContext) GetSmartlockPublicKey() []byte {
+	return ac.slPublicKey
+}
+func (ac *AuthorizeContext) CalculateSharedKey() {
+	sharedKey := [32]byte{}
+	box.Precompute(&sharedKey, (*[32]byte)(ac.slPublicKey), (*[32]byte)(ac.cliPrivateKey))
+	ac.sharedKey = sharedKey[:]
+}
+
+func (ac *AuthorizeContext) GetMessageAuthenticator(parts ...[]byte) []byte {
+	h := hmac.New(sha256.New, ac.sharedKey)
+	h.Write(slices.Concat(parts...))
+	return h.Sum(nil)
 }
