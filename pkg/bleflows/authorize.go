@@ -4,7 +4,9 @@ import (
 	"crypto/hmac"
 	crypto_rand "crypto/rand"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
+	"os"
 	"slices"
 
 	"go.nuki.io/nuki/nukictl/pkg/blecommands"
@@ -27,26 +29,26 @@ func (f *Flow) Authorize(mac string) error {
 	fmt.Println("Requesting SL public key")
 	cmd := blecommands.NewUnencryptedRequestData(blecommands.PublicKey)
 	res := blecommands.FromDeviceResponse(device.Write(cmd.ToMessage()))
-	ctx.slPublicKey = res.GetPayload()
-	fmt.Printf("SL public key: %x\n", ctx.slPublicKey)
+	ctx.SlPublicKey = res.GetPayload()
+	fmt.Printf("SL public key: %x\n", ctx.SlPublicKey)
 
 	pubKey, privKey, err := box.GenerateKey(crypto_rand.Reader)
-	ctx.cliPublicKey = pubKey[:]
-	ctx.cliPrivateKey = privKey[:]
+	ctx.CliPublicKey = pubKey[:]
+	ctx.CliPrivateKey = privKey[:]
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println("Sending public key:", ctx.cliPublicKey)
-	cmd = blecommands.NewUnencryptedCommand(blecommands.PublicKey, ctx.cliPublicKey)
+	fmt.Println("Sending public key:", ctx.CliPublicKey)
+	cmd = blecommands.NewUnencryptedCommand(blecommands.PublicKey, ctx.CliPublicKey)
 	res = blecommands.FromDeviceResponse(device.Write(cmd.ToMessage()))
 	challenge := res.GetPayload()
 	fmt.Printf("Received challenge: %x\n", challenge)
 
 	ctx.CalculateSharedKey()
-	fmt.Printf("Calculated shared key: %x\n", ctx.sharedKey)
+	fmt.Printf("Calculated shared key: %x\n", ctx.SharedKey)
 
-	authenticator := ctx.GetMessageAuthenticator(ctx.cliPublicKey, ctx.slPublicKey, challenge)
+	authenticator := ctx.GetMessageAuthenticator(ctx.CliPublicKey, ctx.SlPublicKey, challenge)
 	fmt.Printf("Sending authenticator: %x\n", authenticator)
 	cmd = blecommands.NewUnencryptedCommand(
 		blecommands.AuthorizationAuthenticator,
@@ -73,22 +75,23 @@ func (f *Flow) Authorize(mac string) error {
 		),
 	)
 	res = blecommands.FromDeviceResponse(device.Write(cmd.ToMessage()))
-	authId := res.GetPayload()[32 : 32+4]
-	fmt.Printf("Received AuthId: %x\n", authId)
+	ctx.AuthId = res.GetPayload()[32 : 32+4]
+	fmt.Printf("Received AuthId: %x\n", ctx.AuthId)
 	nonceK := res.GetPayload()[52:]
 	fmt.Printf("Received nonceK: %x\n", nonceK)
 
-	authenticator = ctx.GetMessageAuthenticator(authId, nonceK)
+	authenticator = ctx.GetMessageAuthenticator(ctx.AuthId, nonceK)
 	cmd = blecommands.NewUnencryptedCommand(
 		blecommands.AuthorizationIDConfirmation,
 		slices.Concat(
 			authenticator,
-			authId,
+			ctx.AuthId,
 		),
 	)
 	res = blecommands.FromDeviceResponse(device.Write(cmd.ToMessage()))
 	complete := res.GetPayload()
 	fmt.Printf("Complete: %x\n", complete)
+	ctx.DumpJson()
 
 	fmt.Println("Disconnecting...")
 	device.Disconnect()
@@ -102,39 +105,28 @@ func GetNonce() []byte {
 }
 
 type AuthorizeContext struct {
-	cliPublicKey  []byte
-	cliPrivateKey []byte
-	slPublicKey   []byte
-	sharedKey     []byte
+	CliPublicKey  []byte
+	CliPrivateKey []byte
+	SlPublicKey   []byte
+	SharedKey     []byte
+	AuthId        []byte
 }
 
-func (ac *AuthorizeContext) SetCliKeys(priv []byte, pub []byte) {
-	ac.cliPrivateKey = priv
-	ac.cliPublicKey = pub
-}
-func (ac *AuthorizeContext) SetSmartlockPublicKey(pub []byte) {
-	ac.slPublicKey = pub
-}
-func (ac *AuthorizeContext) GetSharedKey() []byte {
-	return ac.sharedKey
-}
-func (ac *AuthorizeContext) GetCliPublicKey() []byte {
-	return ac.cliPublicKey
-}
-func (ac *AuthorizeContext) GetCliPrivateKey() []byte {
-	return ac.cliPrivateKey
-}
-func (ac *AuthorizeContext) GetSmartlockPublicKey() []byte {
-	return ac.slPublicKey
+func (ac *AuthorizeContext) DumpJson() {
+	j, err := json.Marshal(ac)
+	if err != nil {
+		panic(err)
+	}
+	os.WriteFile("./ac.json", j, 0644)
 }
 func (ac *AuthorizeContext) CalculateSharedKey() {
 	sharedKey := [32]byte{}
-	box.Precompute(&sharedKey, (*[32]byte)(ac.slPublicKey), (*[32]byte)(ac.cliPrivateKey))
-	ac.sharedKey = sharedKey[:]
+	box.Precompute(&sharedKey, (*[32]byte)(ac.SlPublicKey), (*[32]byte)(ac.CliPrivateKey))
+	ac.SharedKey = sharedKey[:]
 }
 
 func (ac *AuthorizeContext) GetMessageAuthenticator(parts ...[]byte) []byte {
-	h := hmac.New(sha256.New, ac.sharedKey)
+	h := hmac.New(sha256.New, ac.SharedKey)
 	h.Write(slices.Concat(parts...))
 	return h.Sum(nil)
 }
