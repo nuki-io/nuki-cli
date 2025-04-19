@@ -1,7 +1,6 @@
 package bleflows
 
 import (
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -9,31 +8,37 @@ import (
 	"go.nuki.io/nuki/nukictl/pkg/blecommands"
 )
 
-func (f *Flow) PerformLockOperation(mac string, action blecommands.Action) error {
-	addr, ok := f.ble.GetDeviceAddress(mac)
+func (f *Flow) PerformLockOperation(id string, action blecommands.Action) error {
+	addr, ok := f.ble.GetDeviceAddress(id)
 	if !ok {
-		return fmt.Errorf("requested device with MAC %s was not discovered", mac)
+		return fmt.Errorf("requested device with MAC %s was not discovered", id)
+	}
+
+	ctx := &AuthorizeContext{}
+	err := ctx.Load(id)
+	if err != nil {
+		return fmt.Errorf("device is not paired yet. %s", err.Error())
 	}
 
 	device, err := f.ble.Connect(*addr)
 	if err != nil {
-		panic(fmt.Sprintf("Cannot connect to device %s. %s", mac, err.Error()))
+		return fmt.Errorf("cannot connect to device %s. %s", id, err.Error())
 	}
 	device.DiscoverKeyturnerUsdio()
 
 	crypto := blecommands.NewCrypto(ctx.SharedKey)
 
-	cmd := blecommands.NewEncryptedRequestData(crypto, ac.AuthId, blecommands.Challenge)
+	cmd := blecommands.NewEncryptedRequestData(crypto, ctx.AuthId, blecommands.Challenge)
 	res := blecommands.FromEncryptedDeviceResponse(crypto, device.WriteUsdio(cmd.ToMessage(GetNonce24())))
 	nonce := res.GetPayload()
 
 	cmd = blecommands.NewEncryptedCommand(
 		crypto,
-		ac.AuthId,
+		ctx.AuthId,
 		blecommands.LockAction,
 		slices.Concat(
 			[]byte{byte(action)},
-			[]byte{0x27, 0xED, 0x7E, 0x18},
+			ctx.AppId,
 			[]byte{0x00},
 			nonce,
 		))
@@ -43,18 +48,4 @@ func (f *Flow) PerformLockOperation(mac string, action blecommands.Action) error
 
 	device.Disconnect()
 	return nil
-}
-
-func loadAuthContext() *AuthorizeContext {
-	j, err := os.ReadFile("./ac.json")
-	if err != nil {
-		log.Fatal("Error when opening file: ", err)
-	}
-
-	var ac AuthorizeContext
-	err = json.Unmarshal(j, &ac)
-	if err != nil {
-		log.Fatal("Error during Unmarshal(): ", err)
-	}
-	return &ac
 }

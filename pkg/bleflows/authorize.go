@@ -4,29 +4,32 @@ import (
 	"crypto/hmac"
 	crypto_rand "crypto/rand"
 	"crypto/sha256"
-	"encoding/json"
+	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"log/slog"
+	"math/rand/v2"
 	"os"
 	"slices"
 
+	"github.com/spf13/viper"
 	"go.nuki.io/nuki/nukictl/pkg/blecommands"
 	"golang.org/x/crypto/nacl/box"
 )
 
-func (f *Flow) Authorize(mac string) error {
-	addr, ok := f.ble.GetDeviceAddress(mac)
+func (f *Flow) Authorize(id string) error {
+	addr, ok := f.ble.GetDeviceAddress(id)
 	if !ok {
-		return fmt.Errorf("requested device with MAC %s was not discovered", mac)
+		return fmt.Errorf("requested device with MAC %s was not discovered", id)
 	}
 
 	device, err := f.ble.Connect(*addr)
 	if err != nil {
-		panic(fmt.Sprintf("Cannot connect to device %s. %s", mac, err.Error()))
+		panic(fmt.Sprintf("Cannot connect to device %s. %s", id, err.Error()))
 	}
 	device.DiscoverPairing()
 
-	ctx := &AuthorizeContext{}
+	ctx := NewAuthorizeContext()
 	slog.Info("Requesting public key from smartlock")
 	cmd := blecommands.NewUnencryptedRequestData(blecommands.PublicKey)
 	res := blecommands.FromDeviceResponse(device.WritePairing(cmd.ToMessage()))
@@ -58,11 +61,15 @@ func (f *Flow) Authorize(mac string) error {
 	challenge = res.GetPayload()
 	slog.Debug("Received challenge", "challenge", fmt.Sprintf("%x", challenge))
 
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = "unknown host"
+	}
 	appName := [32]byte{}
-	copy(appName[:], "Nuki CLI")
+	copy(appName[:], fmt.Appendf(nil, "Nuki CLI (%s)", hostname))
 	payload := slices.Concat(
-		[]byte{0x00},                   // App,
-		[]byte{0x27, 0xED, 0x7E, 0x18}, // From the example. should be random for each app
+		[]byte{0x00}, // App,
+		ctx.AppId,
 		appName[:],
 		GetNonce32(),
 	)
@@ -77,7 +84,6 @@ func (f *Flow) Authorize(mac string) error {
 	)
 	res = blecommands.FromDeviceResponse(device.WritePairing(cmd.ToMessage()))
 	ctx.AuthId = res.GetPayload()[32 : 32+4]
-	fmt.Printf("Received AuthId: %x\n", ctx.AuthId)
 	nonceK := res.GetPayload()[52:]
 	slog.Debug("Received authorization data", "authId", ctx.AuthId, "nonceK", nonceK)
 
@@ -92,7 +98,7 @@ func (f *Flow) Authorize(mac string) error {
 	res = blecommands.FromDeviceResponse(device.WritePairing(cmd.ToMessage()))
 	complete := res.GetPayload()
 	slog.Debug("Pairing complete", "complete", fmt.Sprintf("%x", complete))
-	ctx.DumpJson()
+	ctx.Store(id)
 
 	slog.Debug("Disconnecting...")
 	device.Disconnect()
@@ -117,15 +123,71 @@ type AuthorizeContext struct {
 	SlPublicKey   []byte
 	SharedKey     []byte
 	AuthId        []byte
+	AppId         []byte
 }
 
-func (ac *AuthorizeContext) DumpJson() {
-	j, err := json.Marshal(ac)
-	if err != nil {
-		panic(err)
+func (ac *AuthorizeContext) toStorage() *authorizeContextStorage {
+	return &authorizeContextStorage{
+		CliPublicKey:  fmt.Sprintf("%x", ac.CliPublicKey),
+		CliPrivateKey: fmt.Sprintf("%x", ac.CliPrivateKey),
+		SlPublicKey:   fmt.Sprintf("%x", ac.SlPublicKey),
+		SharedKey:     fmt.Sprintf("%x", ac.SharedKey),
+		AuthId:        fmt.Sprintf("%x", ac.AuthId),
+		AppId:         fmt.Sprintf("%x", ac.AppId),
 	}
-	os.WriteFile("./ac.json", j, 0644)
 }
+func (ac *AuthorizeContext) fromStorage(s *authorizeContextStorage) {
+	if v, err := hex.DecodeString(s.CliPublicKey); err == nil {
+		ac.CliPublicKey = v
+	}
+	if v, err := hex.DecodeString(s.CliPrivateKey); err == nil {
+		ac.CliPrivateKey = v
+	}
+	if v, err := hex.DecodeString(s.SlPublicKey); err == nil {
+		ac.SlPublicKey = v
+	}
+	if v, err := hex.DecodeString(s.SharedKey); err == nil {
+		ac.SharedKey = v
+	}
+	if v, err := hex.DecodeString(s.AuthId); err == nil {
+		ac.AuthId = v
+	}
+	if v, err := hex.DecodeString(s.AppId); err == nil {
+		ac.AppId = v
+	}
+}
+
+type authorizeContextStorage struct {
+	CliPublicKey  string
+	CliPrivateKey string
+	SlPublicKey   string
+	SharedKey     string
+	AuthId        string
+	AppId         string
+}
+
+func NewAuthorizeContext() *AuthorizeContext {
+	ctx := &AuthorizeContext{}
+	ctx.AppId = binary.LittleEndian.AppendUint32(ctx.AppId, rand.Uint32())
+	return ctx
+}
+
+func (ac *AuthorizeContext) Load(id string) error {
+	cfgKey := fmt.Sprintf("authorizations.%s", id)
+	if !viper.IsSet(cfgKey) {
+		return fmt.Errorf("no authorization for device with id %s found", id)
+	}
+	s := &authorizeContextStorage{}
+	viper.UnmarshalKey(cfgKey, s)
+	ac.fromStorage(s)
+	return nil
+}
+
+func (ac *AuthorizeContext) Store(id string) {
+	cfgKey := fmt.Sprintf("authorizations.%s", id)
+	viper.Set(cfgKey, ac.toStorage())
+}
+
 func (ac *AuthorizeContext) CalculateSharedKey() {
 	sharedKey := [32]byte{}
 	box.Precompute(&sharedKey, (*[32]byte)(ac.SlPublicKey), (*[32]byte)(ac.CliPrivateKey))
