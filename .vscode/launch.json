@@ -21,6 +21,14 @@
             "args": ["devices", "authorize", "0d35dde1-6a81-4459-a63d-e94735d2f305"]
         },
         {
+            "name": "Debug macOS (devices lock)",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "program": "${workspaceFolder}",
+            "args": ["devices", "lock", "0d35dde1-6a81-4459-a63d-e94735d2f305", "1"]
+        },
+        {
             "name": "Debug Linux (devices authorize)",
             "type": "go",
             "request": "launch",
