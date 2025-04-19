@@ -25,7 +25,7 @@ var lockCmd = &cobra.Command{
 			log.Printf("Failed to start scan. %s\n", err.Error())
 			return
 		}
-		ble.ScanForDevice(args[0], 5*time.Second)
+		ble.ScanForDevice(args[0], 10*time.Second)
 		flow := bleflows.NewFlow(ble)
 
 		action, _ := strconv.Atoi(args[1])
