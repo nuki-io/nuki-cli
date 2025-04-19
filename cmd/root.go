@@ -5,7 +5,9 @@ package cmd
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
+	"path"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -30,6 +32,7 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
+	cobra.OnFinalize(writeConfig)
 
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
@@ -53,9 +56,9 @@ func initConfig() {
 		cobra.CheckErr(err)
 
 		// Search config in home directory with name ".nukictl" (without extension).
-		viper.AddConfigPath(home)
 		viper.SetConfigType("yaml")
 		viper.SetConfigName(".nukictl")
+		viper.SetConfigFile(path.Join(home, ".nukictl"))
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match
@@ -63,5 +66,12 @@ func initConfig() {
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
+	}
+}
+
+func writeConfig() {
+	err := viper.WriteConfig()
+	if err != nil {
+		slog.Error("Failed to persist configuration to file", "err", err)
 	}
 }
