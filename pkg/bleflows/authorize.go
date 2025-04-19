@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"slices"
 
@@ -26,11 +27,11 @@ func (f *Flow) Authorize(mac string) error {
 	device.DiscoverPairing()
 
 	ctx := &AuthorizeContext{}
-	fmt.Println("Requesting SL public key")
+	slog.Info("Requesting public key from smartlock")
 	cmd := blecommands.NewUnencryptedRequestData(blecommands.PublicKey)
 	res := blecommands.FromDeviceResponse(device.WritePairing(cmd.ToMessage()))
 	ctx.SlPublicKey = res.GetPayload()
-	fmt.Printf("SL public key: %x\n", ctx.SlPublicKey)
+	slog.Info("Received public key from smartlock", "pubkey", fmt.Sprintf("%x", ctx.SlPublicKey))
 
 	pubKey, privKey, err := box.GenerateKey(crypto_rand.Reader)
 	ctx.CliPublicKey = pubKey[:]
@@ -39,23 +40,23 @@ func (f *Flow) Authorize(mac string) error {
 		panic(err)
 	}
 
-	fmt.Println("Sending public key:", ctx.CliPublicKey)
+	slog.Info("Sending CLI public key", "pubkey", fmt.Sprintf("%x", ctx.CliPublicKey))
 	cmd = blecommands.NewUnencryptedCommand(blecommands.PublicKey, ctx.CliPublicKey)
 	res = blecommands.FromDeviceResponse(device.WritePairing(cmd.ToMessage()))
 	challenge := res.GetPayload()
-	fmt.Printf("Received challenge: %x\n", challenge)
+	slog.Debug("Received challenge", "challenge", fmt.Sprintf("%x", challenge))
 
 	ctx.CalculateSharedKey()
-	fmt.Printf("Calculated shared key: %x\n", ctx.SharedKey)
+	slog.Info("Calculated shared key", "sharedKey", fmt.Sprintf("%x", ctx.SharedKey))
 
 	authenticator := ctx.GetMessageAuthenticator(ctx.CliPublicKey, ctx.SlPublicKey, challenge)
-	fmt.Printf("Sending authenticator: %x\n", authenticator)
+	slog.Info("Sending authenticator", "authenticator", fmt.Sprintf("%x", authenticator))
 	cmd = blecommands.NewUnencryptedCommand(
 		blecommands.AuthorizationAuthenticator,
 		authenticator)
 	res = blecommands.FromDeviceResponse(device.WritePairing(cmd.ToMessage()))
 	challenge = res.GetPayload()
-	fmt.Printf("Received challenge: %x\n", challenge)
+	slog.Debug("Received challenge", "challenge", fmt.Sprintf("%x", challenge))
 
 	appName := [32]byte{}
 	copy(appName[:], "Nuki CLI")
@@ -78,7 +79,7 @@ func (f *Flow) Authorize(mac string) error {
 	ctx.AuthId = res.GetPayload()[32 : 32+4]
 	fmt.Printf("Received AuthId: %x\n", ctx.AuthId)
 	nonceK := res.GetPayload()[52:]
-	fmt.Printf("Received nonceK: %x\n", nonceK)
+	slog.Debug("Received authorization data", "authId", ctx.AuthId, "nonceK", nonceK)
 
 	authenticator = ctx.GetMessageAuthenticator(ctx.AuthId, nonceK)
 	cmd = blecommands.NewUnencryptedCommand(
@@ -90,10 +91,10 @@ func (f *Flow) Authorize(mac string) error {
 	)
 	res = blecommands.FromDeviceResponse(device.WritePairing(cmd.ToMessage()))
 	complete := res.GetPayload()
-	fmt.Printf("Complete: %x\n", complete)
+	slog.Debug("Pairing complete", "complete", fmt.Sprintf("%x", complete))
 	ctx.DumpJson()
 
-	fmt.Println("Disconnecting...")
+	slog.Debug("Disconnecting...")
 	device.Disconnect()
 	return nil
 }

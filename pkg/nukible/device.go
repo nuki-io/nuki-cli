@@ -2,6 +2,7 @@ package nukible
 
 import (
 	"fmt"
+	"log/slog"
 
 	"tinygo.org/x/bluetooth"
 )
@@ -43,16 +44,16 @@ func (n *Device) DiscoverPairing() error {
 		)
 	}
 	if err != nil {
-		return fmt.Errorf("Could not discover any pairing services or characteristics. %s", err.Error())
+		return fmt.Errorf("could not discover any pairing services or characteristics. %s", err.Error())
 	}
 	if len(n.services) != 1 {
-		return fmt.Errorf("Expected exactly one pairing service, got %d", len(n.services))
+		return fmt.Errorf("expected exactly one pairing service, got %d", len(n.services))
 	}
 	if len(n.characteristics) != 1 {
-		return fmt.Errorf("Expected exactly one GDIO characteristic, got %d", len(n.characteristics))
+		return fmt.Errorf("expected exactly one GDIO characteristic, got %d", len(n.characteristics))
 	}
 	n.pairingGdioChar = n.characteristics[0]
-	fmt.Println("Characteristic", n.pairingGdioChar.String())
+	slog.Debug("Discovered pairing characteristic", "uuid", n.pairingGdioChar.String())
 	return nil
 }
 
@@ -62,16 +63,16 @@ func (n *Device) DiscoverKeyturnerUsdio() error {
 		[]bluetooth.UUID{KeyturnerUsdioCharacteristic},
 	)
 	if err != nil {
-		return fmt.Errorf("Could not discover any Keyturner services or characteristics. %s", err.Error())
+		return fmt.Errorf("could not discover any Keyturner services or characteristics. %s", err.Error())
 	}
 	if len(n.services) != 1 {
-		return fmt.Errorf("Expected exactly one Keyturner service, got %d", len(n.services))
+		return fmt.Errorf("expected exactly one Keyturner service, got %d", len(n.services))
 	}
 	if len(n.characteristics) != 1 {
-		return fmt.Errorf("Expected exactly one USDIO characteristic, got %d", len(n.characteristics))
+		return fmt.Errorf("expected exactly one USDIO characteristic, got %d", len(n.characteristics))
 	}
 	n.keyturnerUsdioChar = n.characteristics[0]
-	fmt.Println("Characteristic", n.keyturnerUsdioChar.String())
+	slog.Debug("Discovered Keyturner USDIO characteristic", "uuid", n.keyturnerUsdioChar.String())
 	return nil
 }
 
@@ -93,12 +94,12 @@ func (n *Device) write(char bluetooth.DeviceCharacteristic, data []byte) []byte 
 	sem := make(chan int, 1)
 	sem <- 1
 
-	fmt.Printf("Writing bytes to characteristic %x\n", data)
+	slog.Debug("Writing bytes to characteristic", "data", fmt.Sprintf("%x", data))
 	rxData := make([]byte, 0)
 	char.EnableNotifications(func(buf []byte) { rxData = onGdioNotify(buf, sem) })
 	n.osWrite(char, data)
 
-	fmt.Println("Waiting for response")
+	slog.Debug("Waiting for response...")
 	sem <- 1
 	// disable notifications again - TODO: sensible, or should we just enable it once?
 	char.EnableNotifications(nil)
@@ -107,7 +108,7 @@ func (n *Device) write(char bluetooth.DeviceCharacteristic, data []byte) []byte 
 }
 
 func onGdioNotify(buf []byte, sem chan int) []byte {
-	fmt.Printf("Received response: %x\n", buf)
+	slog.Debug("Received response", "buf", fmt.Sprintf("%x", buf))
 	<-sem
 	return buf
 }

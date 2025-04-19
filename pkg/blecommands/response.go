@@ -3,6 +3,7 @@ package blecommands
 import (
 	"encoding/binary"
 	"fmt"
+	"log/slog"
 )
 
 type BleResponse struct {
@@ -16,9 +17,11 @@ func FromDeviceResponse(b []byte) *BleResponse {
 
 	crcExpect := CRC(b[:len(b)-2])
 	crcReceived := binary.LittleEndian.Uint16(b[len(b)-2:])
-	fmt.Printf("Without CRC: %x\n", b[:len(b)-2])
-	fmt.Printf("Expected CRC: %x\n", crcExpect)
-	fmt.Printf("Received CRC: %x\n", crcReceived)
+	slog.Debug(
+		"Received response from smartlock",
+		"response", b[:len(b)-2],
+		"crcReceived", fmt.Sprintf("%x", crcReceived),
+		"crcExpect", fmt.Sprintf("%x", crcExpect))
 
 	r := &BleResponse{
 		cmd:      Command(binary.LittleEndian.Uint16(b[0:2])),
@@ -51,9 +54,11 @@ func FromEncryptedDeviceResponse(crypto Crypto, b []byte) *BleEncryptedResponse 
 
 	crcExpect := CRC(pdata[:len(pdata)-2])
 	crcReceived := binary.LittleEndian.Uint16(pdata[len(pdata)-2:])
-	fmt.Printf("Without CRC: %x\n", pdata[:len(pdata)-2])
-	fmt.Printf("Expected CRC: %x\n", crcExpect)
-	fmt.Printf("Received CRC: %x\n", crcReceived)
+	slog.Debug(
+		"Received response from smartlock",
+		"response", pdata[:len(pdata)-2],
+		"crcReceived", fmt.Sprintf("%x", crcReceived),
+		"crcExpect", fmt.Sprintf("%x", crcExpect))
 
 	r := &BleEncryptedResponse{
 		authId:   authId,

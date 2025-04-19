@@ -3,8 +3,7 @@ package bleflows
 import (
 	"encoding/json"
 	"fmt"
-	"log"
-	"os"
+	"log/slog"
 	"slices"
 
 	"go.nuki.io/nuki/nukictl/pkg/blecommands"
@@ -39,8 +38,7 @@ func (f *Flow) PerformLockOperation(mac string, action blecommands.Action) error
 			nonce,
 		))
 	res = blecommands.FromEncryptedDeviceResponse(crypto, device.WriteUsdio(cmd.ToMessage(GetNonce24())))
-	fmt.Printf("%x", res.GetPayload())
-
+	slog.Info("Received lock action response", "payload", res)
 	// TODO: should read intermediate states as well
 
 	device.Disconnect()
