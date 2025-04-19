@@ -137,6 +137,7 @@ func NewEncryptedRequestData(crypto Crypto, authId []byte, request Command) Encr
 }
 
 func (c *EncryptedCommand) ToMessage(nonce []byte) []byte {
+	// length = authId + command + payload length + CRC
 	pdata := make([]byte, 0, 4+2+len(c.payload)+2)
 	pdata = append(pdata, c.authId...)
 	pdata = binary.LittleEndian.AppendUint16(pdata, uint16(c.command))
@@ -145,6 +146,7 @@ func (c *EncryptedCommand) ToMessage(nonce []byte) []byte {
 
 	pdataEnc, _ := c.crypto.Encrypt(nonce, pdata)
 
+	// length = nonce + authId + encrypted message length
 	adata := make([]byte, 0, 24+4+2)
 	adata = append(adata, nonce...)
 	adata = append(adata, c.authId...)
