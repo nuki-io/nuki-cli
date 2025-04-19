@@ -14,7 +14,7 @@ type crypto struct {
 	key []byte
 }
 
-func New(sharedKey []byte) Crypto {
+func NewCrypto(sharedKey []byte) Crypto {
 	return &crypto{
 		key: sharedKey,
 	}

@@ -22,8 +22,7 @@ func (f *Flow) PerformLockOperation(mac string, action blecommands.Action) error
 	}
 	device.DiscoverKeyturnerUsdio()
 
-	ac := loadAuthContext()
-	crypto := blecommands.New(ac.SharedKey)
+	crypto := blecommands.NewCrypto(ctx.SharedKey)
 
 	cmd := blecommands.NewEncryptedRequestData(crypto, ac.AuthId, blecommands.Challenge)
 	res := blecommands.FromEncryptedDeviceResponse(crypto, device.WriteUsdio(cmd.ToMessage(GetNonce24())))
