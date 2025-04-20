@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"log"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -16,10 +15,14 @@ var scanCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		ble, err := nukible.NewNukiBle()
 		if err != nil {
-			log.Printf("Failed to start scan. %s\n", err.Error())
+			logger.Error("Failed to enable bluetooth device", "error", err.Error())
 			return
 		}
-		ble.Scan(10 * time.Second)
+		err = ble.Scan(10 * time.Second)
+		if err != nil {
+			logger.Error("Failed to scan", "error", err.Error())
+			return
+		}
 	},
 }
 

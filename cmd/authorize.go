@@ -4,7 +4,6 @@ Copyright © 2025 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"log"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -19,15 +18,19 @@ var authorizeCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		ble, err := nukible.NewNukiBle()
 		if err != nil {
-			log.Printf("Failed to start scan. %s\n", err.Error())
+			logger.Error("Failed to enable bluetooth device", "error", err.Error())
 			return
 		}
-		ble.ScanForDevice(args[0], 10*time.Second)
+		err = ble.ScanForDevice(args[0], 10*time.Second)
+		if err != nil {
+			logger.Error("Failed to scan", "error", err.Error())
+			return
+		}
 		flow := bleflows.NewFlow(ble)
 
 		err = flow.Authorize(args[0])
 		if err != nil {
-			log.Printf("Failed to authorize. %s\n", err.Error())
+			logger.Error("Failed to authorize", "error", err.Error())
 			return
 		}
 	},

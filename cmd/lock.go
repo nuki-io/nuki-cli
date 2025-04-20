@@ -4,7 +4,6 @@ Copyright © 2025 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"log"
 	"strconv"
 	"time"
 
@@ -22,16 +21,20 @@ var lockCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		ble, err := nukible.NewNukiBle()
 		if err != nil {
-			log.Printf("Failed to start scan. %s\n", err.Error())
+			logger.Error("Failed to enable bluetooth device", "error", err.Error())
 			return
 		}
-		ble.ScanForDevice(args[0], 10*time.Second)
+		err = ble.ScanForDevice(args[0], 10*time.Second)
+		if err != nil {
+			logger.Error("Failed to scan", "error", err.Error())
+			return
+		}
 		flow := bleflows.NewFlow(ble)
 
 		action, _ := strconv.Atoi(args[1])
 		err = flow.PerformLockOperation(args[0], blecommands.Action(action))
 		if err != nil {
-			log.Printf("Failed to lock. %s\n", err.Error())
+			logger.Error("Failed to perform lock operation", "error", err.Error(), "action", action)
 			return
 		}
 	},
