@@ -70,6 +70,10 @@ func FromEncryptedDeviceResponse(crypto Crypto, b []byte) *BleEncryptedResponse 
 	return r
 }
 
+func (r *BleEncryptedResponse) GetCommand() Command {
+	return r.cmd
+}
+
 func (r *BleEncryptedResponse) GetPayload() []byte {
 	return r.payload
 }

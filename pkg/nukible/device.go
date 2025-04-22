@@ -83,20 +83,24 @@ func (n *Device) Disconnect() {
 }
 
 func (n *Device) WritePairing(data []byte) []byte {
-	return n.write(n.pairingGdioChar, data)
+	return n.write(n.pairingGdioChar, data, onGdioNotify)
 }
 
 func (n *Device) WriteUsdio(data []byte) []byte {
-	return n.write(n.keyturnerUsdioChar, data)
+	return n.write(n.keyturnerUsdioChar, data, onGdioNotify)
 }
 
-func (n *Device) write(char bluetooth.DeviceCharacteristic, data []byte) []byte {
+func (n *Device) WriteUsdioWithCallback(data []byte, cb func([]byte, chan int) []byte) []byte {
+	return n.write(n.keyturnerUsdioChar, data, cb)
+}
+
+func (n *Device) write(char bluetooth.DeviceCharacteristic, data []byte, cb func([]byte, chan int) []byte) []byte {
 	sem := make(chan int, 1)
 	sem <- 1
 
 	slog.Debug("Writing bytes to characteristic", "data", fmt.Sprintf("%x", data))
 	rxData := make([]byte, 0)
-	char.EnableNotifications(func(buf []byte) { rxData = onGdioNotify(buf, sem) })
+	char.EnableNotifications(func(buf []byte) { rxData = cb(buf, sem) })
 	n.osWrite(char, data)
 
 	slog.Debug("Waiting for response...")

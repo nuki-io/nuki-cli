@@ -42,10 +42,21 @@ func (f *Flow) PerformLockOperation(id string, action blecommands.Action) error 
 			[]byte{0x00},
 			nonce,
 		))
-	res = blecommands.FromEncryptedDeviceResponse(crypto, device.WriteUsdio(cmd.ToMessage(GetNonce24())))
-	slog.Info("Received lock action response", "payload", res)
-	// TODO: should read intermediate states as well
+	device.WriteUsdioWithCallback(
+		cmd.ToMessage(GetNonce24()),
+		func(b []byte, c chan int) []byte { return onLockResponse(b, c, crypto) },
+	)
 
 	device.Disconnect()
 	return nil
+}
+
+func onLockResponse(buf []byte, sem chan int, crypto blecommands.Crypto) []byte {
+	slog.Debug("Received response", "buf", fmt.Sprintf("%x", buf))
+	res := blecommands.FromEncryptedDeviceResponse(crypto, buf)
+	slog.Info("Received lock action response", "cmd", res.GetCommand(), "payload", res.GetPayload())
+	if (res.GetCommand() == blecommands.Status && slices.Equal(res.GetPayload(), []byte{0x00})) || res.GetCommand() == blecommands.ErrorReport {
+		<-sem
+	}
+	return buf
 }
