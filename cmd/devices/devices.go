@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+	"go.nuki.io/nuki/nukictl/cmd"
 )
 
 // devicesCmd represents the devices command
@@ -15,5 +16,5 @@ var devicesCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(devicesCmd)
+	cmd.RootCmd.AddCommand(devicesCmd)
 }

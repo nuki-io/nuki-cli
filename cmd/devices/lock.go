@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"go.nuki.io/nuki/nukictl/cmd/internal"
 	"go.nuki.io/nuki/nukictl/pkg/blecommands"
 	"go.nuki.io/nuki/nukictl/pkg/bleflows"
 	"go.nuki.io/nuki/nukictl/pkg/nukible"
@@ -22,13 +23,13 @@ var lockCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		ble, err := nukible.NewNukiBle()
 		if err != nil {
-			logger.Error("Failed to enable bluetooth device", "error", err.Error())
+			internal.Logger.Error("Failed to enable bluetooth device", "error", err.Error())
 			return
 		}
 		if runtime.GOOS == "linux" {
 			err = ble.ScanForDevice(args[0], 10*time.Second)
 			if err != nil {
-				logger.Error("Failed to scan", "error", err.Error())
+				internal.Logger.Error("Failed to scan", "error", err.Error())
 				return
 			}
 		}
@@ -37,7 +38,7 @@ var lockCmd = &cobra.Command{
 		action, _ := strconv.Atoi(args[1])
 		err = flow.PerformLockOperation(args[0], blecommands.Action(action))
 		if err != nil {
-			logger.Error("Failed to perform lock operation", "error", err.Error(), "action", action)
+			internal.Logger.Error("Failed to perform lock operation", "error", err.Error(), "action", action)
 			return
 		}
 	},

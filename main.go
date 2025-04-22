@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"go.nuki.io/nuki/nukictl/cmd"
+	_ "go.nuki.io/nuki/nukictl/cmd/devices"
 	logger "go.nuki.io/nuki/nukictl/internal"
 )
 
