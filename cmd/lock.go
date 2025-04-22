@@ -4,6 +4,7 @@ Copyright © 2025 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"runtime"
 	"strconv"
 	"time"
 
@@ -24,10 +25,12 @@ var lockCmd = &cobra.Command{
 			logger.Error("Failed to enable bluetooth device", "error", err.Error())
 			return
 		}
-		err = ble.ScanForDevice(args[0], 10*time.Second)
-		if err != nil {
-			logger.Error("Failed to scan", "error", err.Error())
-			return
+		if runtime.GOOS == "linux" {
+			err = ble.ScanForDevice(args[0], 10*time.Second)
+			if err != nil {
+				logger.Error("Failed to scan", "error", err.Error())
+				return
+			}
 		}
 		flow := bleflows.NewFlow(ble)
 
