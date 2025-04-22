@@ -5,61 +5,61 @@ import (
 	"slices"
 )
 
-type Command uint16
+type CommandCode uint16
 
 const (
-	RequestData                 Command = 0x0001
-	PublicKey                   Command = 0x0003
-	Challenge                   Command = 0x0004
-	AuthorizationAuthenticator  Command = 0x0005
-	AuthorizationData           Command = 0x0006
-	AuthorizationID             Command = 0x0007
-	RemoveAuthorizationEntry    Command = 0x0008
-	RequestAuthorizationEntries Command = 0x0009
-	AuthorizationEntry          Command = 0x000A
-	AuthorizationDataInvite     Command = 0x000B
-	KeyturnerStates             Command = 0x000C
-	LockAction                  Command = 0x000D
-	Status                      Command = 0x000E
-	MostRecentCommand           Command = 0x000F
-	OpeningsClosingsSummary     Command = 0x0010
-	BatteryReport               Command = 0x0011
-	ErrorReport                 Command = 0x0012
-	SetConfig                   Command = 0x0013
-	RequestConfig               Command = 0x0014
-	Config                      Command = 0x0015
-	SetSecurityPIN              Command = 0x0019
-	RequestCalibration          Command = 0x001A
-	RequestReboot               Command = 0x001D
-	AuthorizationIDConfirmation Command = 0x001E
-	AuthorizationIDInvite       Command = 0x001F
-	VerifySecurityPIN           Command = 0x0020
-	UpdateTime                  Command = 0x0021
-	UpdateAuthorizationEntry    Command = 0x0025
-	AuthorizationEntryCount     Command = 0x0027
-	RequestLogEntries           Command = 0x0031
-	LogEntry                    Command = 0x0032
-	LogEntryCount               Command = 0x0033
-	EnableLogging               Command = 0x0034
-	SetAdvancedConfig           Command = 0x0035
-	RequestAdvancedConfig       Command = 0x0036
-	AdvancedConfig              Command = 0x0037
-	AddTimeControlEntry         Command = 0x0039
-	TimeControlEntryID          Command = 0x003A
-	RemoveTimeControlEntry      Command = 0x003B
-	RequestTimeControlEntries   Command = 0x003C
-	TimeControlEntryCount       Command = 0x003D
-	TimeControlEntry            Command = 0x003E
-	UpdateTimeControlEntry      Command = 0x003F
-	AddKeypadCode               Command = 0x0041
-	KeypadCodeID                Command = 0x0042
-	RequestKeypadCodes          Command = 0x0043
-	KeypadCodeCount             Command = 0x0044
-	KeypadCode                  Command = 0x0045
-	UpdateKeypadCode            Command = 0x0046
-	RemoveKeypadCode            Command = 0x0047
-	AuthorizationInfo           Command = 0x004C
-	SimpleLockAction            Command = 0x0100
+	RequestData                 CommandCode = 0x0001
+	PublicKey                   CommandCode = 0x0003
+	Challenge                   CommandCode = 0x0004
+	AuthorizationAuthenticator  CommandCode = 0x0005
+	AuthorizationData           CommandCode = 0x0006
+	AuthorizationID             CommandCode = 0x0007
+	RemoveAuthorizationEntry    CommandCode = 0x0008
+	RequestAuthorizationEntries CommandCode = 0x0009
+	AuthorizationEntry          CommandCode = 0x000A
+	AuthorizationDataInvite     CommandCode = 0x000B
+	KeyturnerStates             CommandCode = 0x000C
+	LockAction                  CommandCode = 0x000D
+	Status                      CommandCode = 0x000E
+	MostRecentCommand           CommandCode = 0x000F
+	OpeningsClosingsSummary     CommandCode = 0x0010
+	BatteryReport               CommandCode = 0x0011
+	ErrorReport                 CommandCode = 0x0012
+	SetConfig                   CommandCode = 0x0013
+	RequestConfig               CommandCode = 0x0014
+	Config                      CommandCode = 0x0015
+	SetSecurityPIN              CommandCode = 0x0019
+	RequestCalibration          CommandCode = 0x001A
+	RequestReboot               CommandCode = 0x001D
+	AuthorizationIDConfirmation CommandCode = 0x001E
+	AuthorizationIDInvite       CommandCode = 0x001F
+	VerifySecurityPIN           CommandCode = 0x0020
+	UpdateTime                  CommandCode = 0x0021
+	UpdateAuthorizationEntry    CommandCode = 0x0025
+	AuthorizationEntryCount     CommandCode = 0x0027
+	RequestLogEntries           CommandCode = 0x0031
+	LogEntry                    CommandCode = 0x0032
+	LogEntryCount               CommandCode = 0x0033
+	EnableLogging               CommandCode = 0x0034
+	SetAdvancedConfig           CommandCode = 0x0035
+	RequestAdvancedConfig       CommandCode = 0x0036
+	AdvancedConfig              CommandCode = 0x0037
+	AddTimeControlEntry         CommandCode = 0x0039
+	TimeControlEntryID          CommandCode = 0x003A
+	RemoveTimeControlEntry      CommandCode = 0x003B
+	RequestTimeControlEntries   CommandCode = 0x003C
+	TimeControlEntryCount       CommandCode = 0x003D
+	TimeControlEntry            CommandCode = 0x003E
+	UpdateTimeControlEntry      CommandCode = 0x003F
+	AddKeypadCode               CommandCode = 0x0041
+	KeypadCodeID                CommandCode = 0x0042
+	RequestKeypadCodes          CommandCode = 0x0043
+	KeypadCodeCount             CommandCode = 0x0044
+	KeypadCode                  CommandCode = 0x0045
+	UpdateKeypadCode            CommandCode = 0x0046
+	RemoveKeypadCode            CommandCode = 0x0047
+	AuthorizationInfo           CommandCode = 0x004C
+	SimpleLockAction            CommandCode = 0x0100
 )
 
 type Action uint8
@@ -79,18 +79,18 @@ var (
 )
 
 type UnencryptedCommand struct {
-	command Command
+	command CommandCode
 	payload []byte
 }
 
-func NewUnencryptedCommand(cmd Command, payload []byte) UnencryptedCommand {
+func NewUnencryptedCommand(cmd CommandCode, payload []byte) UnencryptedCommand {
 	return UnencryptedCommand{
 		command: cmd,
 		payload: payload,
 	}
 }
 
-func NewUnencryptedRequestData(request Command) UnencryptedCommand {
+func NewUnencryptedRequestData(request CommandCode) UnencryptedCommand {
 	payload := make([]byte, 2)
 	binary.LittleEndian.PutUint16(payload, uint16(request))
 	return UnencryptedCommand{
@@ -112,11 +112,11 @@ func (c *UnencryptedCommand) ToMessage() []byte {
 type EncryptedCommand struct {
 	crypto  Crypto
 	authId  []byte
-	command Command
+	command CommandCode
 	payload []byte
 }
 
-func NewEncryptedCommand(crypto Crypto, authId []byte, cmd Command, payload []byte) EncryptedCommand {
+func NewEncryptedCommand(crypto Crypto, authId []byte, cmd CommandCode, payload []byte) EncryptedCommand {
 	return EncryptedCommand{
 		crypto:  crypto,
 		authId:  authId,
@@ -125,7 +125,7 @@ func NewEncryptedCommand(crypto Crypto, authId []byte, cmd Command, payload []by
 	}
 }
 
-func NewEncryptedRequestData(crypto Crypto, authId []byte, request Command) EncryptedCommand {
+func NewEncryptedRequestData(crypto Crypto, authId []byte, request CommandCode) EncryptedCommand {
 	payload := make([]byte, 2)
 	binary.LittleEndian.PutUint16(payload, uint16(request))
 	return EncryptedCommand{

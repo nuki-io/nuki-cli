@@ -54,8 +54,8 @@ func (f *Flow) PerformLockOperation(id string, action blecommands.Action) error 
 func onLockResponse(buf []byte, sem chan int, crypto blecommands.Crypto) []byte {
 	slog.Debug("Received response", "buf", fmt.Sprintf("%x", buf))
 	res := blecommands.FromEncryptedDeviceResponse(crypto, buf)
-	slog.Info("Received lock action response", "cmd", res.GetCommand(), "payload", res.GetPayload())
-	if (res.GetCommand() == blecommands.Status && slices.Equal(res.GetPayload(), []byte{0x00})) || res.GetCommand() == blecommands.ErrorReport {
+	slog.Info("Received lock action response", "cmd", res.GetCommandCode(), "payload", res.GetPayload())
+	if (res.GetCommandCode() == blecommands.Status && slices.Equal(res.GetPayload(), []byte{0x00})) || res.GetCommandCode() == blecommands.ErrorReport {
 		<-sem
 	}
 	return buf

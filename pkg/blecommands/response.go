@@ -7,7 +7,7 @@ import (
 )
 
 type BleResponse struct {
-	cmd      Command
+	cmd      CommandCode
 	payload  []byte
 	crc      uint16
 	crcMatch bool
@@ -24,7 +24,7 @@ func FromDeviceResponse(b []byte) *BleResponse {
 		"crcExpect", fmt.Sprintf("%x", crcExpect))
 
 	r := &BleResponse{
-		cmd:      Command(binary.LittleEndian.Uint16(b[0:2])),
+		cmd:      CommandCode(binary.LittleEndian.Uint16(b[0:2])),
 		payload:  b[2 : len(b)-2],
 		crc:      crcReceived,
 		crcMatch: crcReceived == crcExpect,
@@ -38,7 +38,7 @@ func (r *BleResponse) GetPayload() []byte {
 
 type BleEncryptedResponse struct {
 	authId   []byte
-	cmd      Command
+	cmd      CommandCode
 	payload  []byte
 	crc      uint16
 	crcMatch bool
@@ -62,7 +62,7 @@ func FromEncryptedDeviceResponse(crypto Crypto, b []byte) *BleEncryptedResponse 
 
 	r := &BleEncryptedResponse{
 		authId:   authId,
-		cmd:      Command(binary.LittleEndian.Uint16(pdata[4:6])),
+		cmd:      CommandCode(binary.LittleEndian.Uint16(pdata[4:6])),
 		payload:  pdata[6 : len(pdata)-2],
 		crc:      crcReceived,
 		crcMatch: crcReceived == crcExpect,
@@ -70,7 +70,7 @@ func FromEncryptedDeviceResponse(crypto Crypto, b []byte) *BleEncryptedResponse 
 	return r
 }
 
-func (r *BleEncryptedResponse) GetCommand() Command {
+func (r *BleEncryptedResponse) GetCommandCode() CommandCode {
 	return r.cmd
 }
 
