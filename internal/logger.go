@@ -13,10 +13,10 @@ import (
 type Logger struct {
 	startTime time.Time
 	logger    *log.Logger
-	level     slog.Level
+	level     *slog.LevelVar
 }
 
-func NewLogger(level slog.Level, output *os.File) *Logger {
+func NewLogger(level *slog.LevelVar, output *os.File) *Logger {
 	return &Logger{
 		startTime: time.Now(),
 		logger:    log.New(output, "", 0),
@@ -26,7 +26,7 @@ func NewLogger(level slog.Level, output *os.File) *Logger {
 
 // Enabled determines if the log level is enabled.
 func (l *Logger) Enabled(ctx context.Context, level slog.Level) bool {
-	return l.level <= level
+	return l.level.Level() <= level
 }
 
 // Handle formats and writes the log record.

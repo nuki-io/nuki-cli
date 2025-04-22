@@ -13,8 +13,10 @@ import (
 )
 
 func main() {
-	logger := slog.New(logger.NewLogger(slog.LevelInfo, os.Stderr))
+	l := &slog.LevelVar{}
+	l.Set(slog.LevelInfo)
+	logger := slog.New(logger.NewLogger(l, os.Stderr))
 	slog.SetDefault(logger)
 
-	cmd.Execute()
+	cmd.Execute(l)
 }

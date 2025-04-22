@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"go.nuki.io/nuki/nukictl/cmd/internal"
+	c "go.nuki.io/nuki/nukictl/cmd"
 	"go.nuki.io/nuki/nukictl/pkg/nukible"
 )
 
@@ -16,12 +16,12 @@ var scanCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		ble, err := nukible.NewNukiBle()
 		if err != nil {
-			internal.Logger.Error("Failed to enable bluetooth device", "error", err.Error())
+			c.Logger.Error("Failed to enable bluetooth device", "error", err.Error())
 			return
 		}
 		err = ble.Scan(10 * time.Second)
 		if err != nil {
-			internal.Logger.Error("Failed to scan", "error", err.Error())
+			c.Logger.Error("Failed to scan", "error", err.Error())
 			return
 		}
 	},
