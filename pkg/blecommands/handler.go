@@ -50,8 +50,8 @@ func (h *bleHandler) ToEncryptedMessage(c Command, nonce []byte) []byte {
 }
 
 func (h *bleHandler) FromDeviceResponse(b []byte) (Command, error) {
-	if len(b) < 8 {
-		return nil, fmt.Errorf("invalid response length: %d. must be at least 8 bytes", len(b))
+	if len(b) < 4 {
+		return nil, fmt.Errorf("invalid response length: %d. must be at least 4 bytes", len(b))
 	}
 	crcExpect := CRC(b[:len(b)-2])
 	crcReceived := binary.LittleEndian.Uint16(b[len(b)-2:])
@@ -70,12 +70,12 @@ func (h *bleHandler) FromDeviceResponse(b []byte) (Command, error) {
 	}
 	cmdImpl, ok := cmdImplMap[cmdCode]
 	if !ok {
-		return nil, fmt.Errorf("unknown command code: %x", cmdCode)
+		return nil, fmt.Errorf("unhandled response command code: %x, name: %s", int(cmdCode), cmdCode)
 	}
 	cmd := cmdImpl()
 	cmd.FromMessage(payload)
 	if cmdCode == CommandErrorReport {
-		return cmd, fmt.Errorf("error report: %x", payload[0])
+		return cmd, fmt.Errorf("error report: %x", payload)
 	}
 	return cmd, nil
 }

@@ -66,7 +66,7 @@ const (
 
 type Action uint8
 
-var (
+const (
 	Unlock Action = 0x01
 	Lock   Action = 0x02
 
@@ -80,20 +80,28 @@ var (
 	FobAction3 Action = 0x83
 )
 
+//go:generate stringer -type=StatusCode
+type StatusCode uint8
+
+const (
+	StatusComplete StatusCode = 0x00
+	StatusAccepted StatusCode = 0x01
+)
+
 var cmdImplMap = map[CommandCode]func() Command{
 	CommandRequestData: func() Command { return Command(&RequestData{}) },
-	// CommandPublicKey:                   func() Command { return Command(&PublicKey{}) },
-	// CommandChallenge:                   func() Command { return Command(&Challenge{}) },
+	CommandPublicKey:   func() Command { return Command(&PublicKey{}) },
+	CommandChallenge:   func() Command { return Command(&Challenge{}) },
 	// CommandAuthorizationAuthenticator:  func() Command { return Command(&AuthorizationAuthenticator{}) },
 	// CommandAuthorizationData:           func() Command { return Command(&AuthorizationData{}) },
-	// CommandAuthorizationID:             func() Command { return Command(&AuthorizationID{}) },
+	CommandAuthorizationID: func() Command { return Command(&AuthorizationID{}) },
 	// CommandRemoveAuthorizationEntry:    func() Command { return Command(&RemoveAuthorizationEntry{}) },
 	// CommandRequestAuthorizationEntries: func() Command { return Command(&RequestAuthorizationEntries{}) },
 	// CommandAuthorizationEntry:          func() Command { return Command(&AuthorizationEntry{}) },
 	// CommandAuthorizationDataInvite:     func() Command { return Command(&AuthorizationDataInvite{}) },
 	// CommandKeyturnerStates:             func() Command { return Command(&KeyturnerStates{}) },
 	// CommandLockAction:                  func() Command { return Command(&LockAction{}) },
-	// CommandStatus:                      func() Command { return Command(&Status{}) },
+	CommandStatus: func() Command { return Command(&Status{}) },
 	// CommandMostRecentCommand:           func() Command { return Command(&MostRecentCommand{}) },
 	// CommandOpeningsClosingsSummary:     func() Command { return Command(&OpeningsClosingsSummary{}) },
 	// CommandBatteryReport:               func() Command { return Command(&BatteryReport{}) },
@@ -317,17 +325,6 @@ func (c *AuthorizationData) GetPayload() []byte {
 		c.Nonce,
 	)
 }
-func (c *AuthorizationData) GetAuthenticatorPayload() []byte {
-	// TODO: maybe less duplication from GetPayload?
-	appName := [32]byte{}
-	copy(appName[:], c.Name)
-	return slices.Concat(
-		[]byte{c.IdType},
-		c.Id,
-		appName[:],
-		c.Nonce,
-	)
-}
 
 type AuthorizationIDConfirmation struct {
 	Authenticator []byte
@@ -342,4 +339,64 @@ func (c *AuthorizationIDConfirmation) FromMessage(b []byte) error {
 }
 func (c *AuthorizationIDConfirmation) GetPayload() []byte {
 	return slices.Concat(c.Authenticator, c.AuthId)
+}
+
+type Challenge struct {
+	Nonce []byte
+}
+
+func (c *Challenge) GetCommandCode() CommandCode {
+	return CommandChallenge
+}
+func (c *Challenge) FromMessage(b []byte) error {
+	if len(b) != 32 {
+		return fmt.Errorf("challenge length must be exactly 32 bytes, got: %d", len(b))
+	}
+	c.Nonce = b
+	return nil
+}
+func (c *Challenge) GetPayload() []byte {
+	return c.Nonce
+}
+
+type AuthorizationID struct {
+	Authenticator []byte
+	AuthId        []byte
+	Uuid          []byte
+	Nonce         []byte
+}
+
+func (c *AuthorizationID) GetCommandCode() CommandCode {
+	return CommandAuthorizationID
+}
+func (c *AuthorizationID) FromMessage(b []byte) error {
+	if len(b) != 84 {
+		return fmt.Errorf("authorization ID length must be exactly 84 bytes, got: %d", len(b))
+	}
+	c.Authenticator = b[:32]
+	c.AuthId = b[32:36]
+	c.Uuid = b[36:52]
+	c.Nonce = b[52:]
+	return nil
+}
+func (c *AuthorizationID) GetPayload() []byte {
+	return slices.Concat(c.Authenticator, c.AuthId, c.Uuid, c.Nonce)
+}
+
+type Status struct {
+	Status StatusCode
+}
+
+func (c *Status) GetCommandCode() CommandCode {
+	return CommandStatus
+}
+func (c *Status) FromMessage(b []byte) error {
+	if len(b) != 1 {
+		return fmt.Errorf("status length must be exactly 1 byte, got: %d", len(b))
+	}
+	c.Status = StatusCode(b[0])
+	return nil
+}
+func (c *Status) GetPayload() []byte {
+	return []byte{byte(c.Status)}
 }

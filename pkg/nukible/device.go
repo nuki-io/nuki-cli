@@ -77,7 +77,10 @@ func (n *Device) DiscoverKeyturnerUsdio() error {
 }
 
 func (n *Device) Disconnect() {
-	n.btDev.Disconnect()
+	err := n.btDev.Disconnect()
+	if err != nil {
+		slog.Error("Error disconnecting from device", "error", err)
+	}
 	n.services = make([]bluetooth.DeviceService, 0)
 	n.characteristics = make([]bluetooth.DeviceCharacteristic, 0)
 }
