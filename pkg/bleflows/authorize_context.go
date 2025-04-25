@@ -2,6 +2,7 @@ package bleflows
 
 import (
 	"crypto/hmac"
+	crypto_rand "crypto/rand"
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
@@ -94,4 +95,13 @@ func (ac *AuthorizeContext) GetMessageAuthenticator(parts ...[]byte) []byte {
 	h := hmac.New(sha256.New, ac.SharedKey)
 	h.Write(slices.Concat(parts...))
 	return h.Sum(nil)
+}
+
+func (ac *AuthorizeContext) GenerateKeyPair() {
+	pub, priv, err := box.GenerateKey(crypto_rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+	ac.CliPublicKey = pub[:]
+	ac.CliPrivateKey = priv[:]
 }

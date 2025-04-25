@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"go.nuki.io/nuki/nukictl/pkg/blecommands"
-	"golang.org/x/crypto/nacl/box"
 )
 
 func (f *Flow) Authorize(id string) error {
@@ -33,12 +32,13 @@ func (f *Flow) Authorize(id string) error {
 	ctx.SlPublicKey = res.(*blecommands.PublicKey).PublicKey
 	slog.Info("Received public key from smartlock", "pubkey", fmt.Sprintf("%x", ctx.SlPublicKey))
 
-	pubKey, privKey, err := box.GenerateKey(crypto_rand.Reader)
-	ctx.CliPublicKey = pubKey[:]
-	ctx.CliPrivateKey = privKey[:]
-	if err != nil {
-		panic(err)
-	}
+	// pubKey, privKey, err := box.GenerateKey(crypto_rand.Reader)
+	// ctx.CliPublicKey = pubKey[:]
+	// ctx.CliPrivateKey = privKey[:]
+	// if err != nil {
+	// 	panic(err)
+	// }
+	ctx.GenerateKeyPair()
 
 	slog.Info("Sending CLI public key", "pubkey", fmt.Sprintf("%x", ctx.CliPublicKey))
 	msg = h.ToMessage(&blecommands.PublicKey{PublicKey: ctx.CliPublicKey})
