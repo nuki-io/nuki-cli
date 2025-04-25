@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"slices"
+	"time"
 )
 
 //go:generate stringer -type=CommandCode
@@ -99,13 +100,13 @@ var cmdImplMap = map[CommandCode]func() Command{
 	// CommandRequestAuthorizationEntries: func() Command { return Command(&RequestAuthorizationEntries{}) },
 	// CommandAuthorizationEntry:          func() Command { return Command(&AuthorizationEntry{}) },
 	// CommandAuthorizationDataInvite:     func() Command { return Command(&AuthorizationDataInvite{}) },
-	// CommandKeyturnerStates:             func() Command { return Command(&KeyturnerStates{}) },
+	CommandKeyturnerStates: func() Command { return Command(&KeyturnerStates{}) },
 	// CommandLockAction:                  func() Command { return Command(&LockAction{}) },
 	CommandStatus: func() Command { return Command(&Status{}) },
 	// CommandMostRecentCommand:           func() Command { return Command(&MostRecentCommand{}) },
 	// CommandOpeningsClosingsSummary:     func() Command { return Command(&OpeningsClosingsSummary{}) },
 	// CommandBatteryReport:               func() Command { return Command(&BatteryReport{}) },
-	// CommandErrorReport:                 func() Command { return Command(&ErrorReport{}) },
+	CommandErrorReport: func() Command { return Command(&ErrorReport{}) },
 	// CommandSetConfig:                   func() Command { return Command(&SetConfig{}) },
 	// CommandRequestConfig:               func() Command { return Command(&RequestConfig{}) },
 	// CommandConfig:                      func() Command { return Command(&Config{}) },
@@ -219,25 +220,6 @@ func (c *EncryptedCommand) ToMessage(nonce []byte) []byte {
 	return slices.Concat(adata, pdataEnc)
 }
 
-func ToEncryptedMessage(crypto Crypto, authId []byte, nonce []byte, c Command) []byte {
-	payload := c.GetPayload()
-	// length = authId + command + payload length + CRC
-	pdata := make([]byte, 0, 4+2+len(payload)+2)
-	pdata = append(pdata, authId...)
-	pdata = binary.LittleEndian.AppendUint16(pdata, uint16(c.GetCommandCode()))
-	pdata = append(pdata, payload...)
-	pdata = binary.LittleEndian.AppendUint16(pdata, CRC(pdata))
-
-	pdataEnc, _ := crypto.Encrypt(nonce, pdata)
-
-	// length = nonce + authId + encrypted message length
-	adata := make([]byte, 0, 24+4+2)
-	adata = append(adata, nonce...)
-	adata = append(adata, authId...)
-	adata = binary.LittleEndian.AppendUint16(adata, uint16(len(pdataEnc)))
-	return slices.Concat(adata, pdataEnc)
-}
-
 type Command interface {
 	FromMessage([]byte) error
 	GetCommandCode() CommandCode
@@ -254,7 +236,7 @@ func (c *RequestData) GetCommandCode() CommandCode {
 }
 
 func (c *RequestData) FromMessage([]byte) error {
-	return nil
+	return fmt.Errorf("not implemented")
 }
 
 func (c *RequestData) GetPayload() []byte {
@@ -399,4 +381,111 @@ func (c *Status) FromMessage(b []byte) error {
 }
 func (c *Status) GetPayload() []byte {
 	return []byte{byte(c.Status)}
+}
+
+type ErrorReport struct {
+	ErrorCode         int8
+	CommandIdentifier CommandCode
+}
+
+func (c *ErrorReport) GetCommandCode() CommandCode {
+	return CommandErrorReport
+}
+func (c *ErrorReport) FromMessage(b []byte) error {
+	if len(b) != 3 {
+		return fmt.Errorf("error report length must be exactly 3 bytes, got: %d", len(b))
+	}
+	c.ErrorCode = int8(b[0])
+	c.CommandIdentifier = CommandCode(binary.LittleEndian.Uint16(b[1:]))
+	return nil
+}
+func (c *ErrorReport) GetPayload() []byte {
+	return []byte{byte(c.ErrorCode), byte(c.CommandIdentifier), byte(c.CommandIdentifier >> 8)}
+}
+
+type LockAction struct {
+	Action Action
+	AppId  []byte
+	Flags  byte
+	Nonce  []byte
+}
+
+func (c *LockAction) GetCommandCode() CommandCode {
+	return CommandLockAction
+}
+func (c *LockAction) FromMessage(b []byte) error {
+	return fmt.Errorf("not implemented")
+}
+func (c *LockAction) GetPayload() []byte {
+	return slices.Concat(
+		[]byte{byte(c.Action)},
+		c.AppId,
+		[]byte{c.Flags},
+		c.Nonce,
+	)
+}
+
+type KeyturnerStates struct {
+	NukiState                      byte
+	LockState                      byte
+	Trigger                        byte
+	CurrentTime                    time.Time
+	TimezoneOffset                 byte
+	CriticalBatterState            byte
+	ConfigUpdateCount              byte
+	LockNGoTimer                   byte
+	LastLockAction                 byte
+	LastLockActionTrigger          byte
+	LastLockActionCompletionStatus byte
+	DoorSensorState                byte
+	NightmodeActive                byte
+	AccessoryBatteryState          byte
+	RemoteAccessStatus             byte
+	BleConnectionStrength          int8
+	WifiConnectionStrength         int8
+	WifiConnectionStatus           byte
+	MqttConnectionStatus           byte
+	ThreadConnectionStatus         byte
+}
+
+func (c *KeyturnerStates) GetCommandCode() CommandCode {
+	return CommandKeyturnerStates
+}
+func (c *KeyturnerStates) FromMessage(b []byte) error {
+	if len(b) != 27 {
+		return fmt.Errorf("keyturner states length must be exactly 32 bytes, got: %d", len(b))
+	}
+	c.NukiState = b[0]
+	c.LockState = b[1]
+	c.Trigger = b[2]
+	c.CurrentTime = time.Date(
+		int(binary.LittleEndian.Uint16(b[3:5])),
+		time.Month(b[5]),
+		int(b[6]),
+		int(b[7]),
+		int(b[8]),
+		int(b[9]),
+		0,
+		time.UTC,
+	)
+	c.TimezoneOffset = b[10]
+	c.CriticalBatterState = b[11]
+	c.ConfigUpdateCount = b[12]
+	c.LockNGoTimer = b[13]
+	c.LastLockAction = b[14]
+	c.LastLockActionTrigger = b[15]
+	c.LastLockActionCompletionStatus = b[16]
+	c.DoorSensorState = b[17]
+	c.NightmodeActive = b[18]
+	c.AccessoryBatteryState = b[19]
+	c.RemoteAccessStatus = b[20]
+	c.BleConnectionStrength = int8(b[21])
+	c.WifiConnectionStrength = int8(b[22])
+	c.WifiConnectionStatus = b[23]
+	c.MqttConnectionStatus = b[24]
+	c.ThreadConnectionStatus = b[25]
+	return nil
+}
+func (c *KeyturnerStates) GetPayload() []byte {
+	panic("not implemented")
 }

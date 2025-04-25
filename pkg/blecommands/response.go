@@ -56,7 +56,7 @@ func FromEncryptedDeviceResponse(crypto Crypto, b []byte) *BleEncryptedResponse 
 	crcReceived := binary.LittleEndian.Uint16(pdata[len(pdata)-2:])
 	slog.Debug(
 		"Received response from smartlock",
-		"response", pdata[:len(pdata)-2],
+		"response", fmt.Sprintf("%x", pdata[:len(pdata)-2]),
 		"crcReceived", fmt.Sprintf("%x", crcReceived),
 		"crcExpect", fmt.Sprintf("%x", crcExpect))
 

@@ -27,35 +27,39 @@ func (f *Flow) PerformLockOperation(id string, action blecommands.Action) error 
 	device.DiscoverKeyturnerUsdio()
 
 	crypto := blecommands.NewCrypto(ctx.SharedKey)
+	h := blecommands.NewBleHandler(crypto, ctx.AuthId)
 
-	cmd := blecommands.NewEncryptedRequestData(crypto, ctx.AuthId, blecommands.CommandChallenge)
-	res := blecommands.FromEncryptedDeviceResponse(crypto, device.WriteUsdio(cmd.ToMessage(GetNonce24())))
-	nonce := res.GetPayload()
+	msg := h.ToEncryptedMessage(&blecommands.RequestData{CommandIdentifier: blecommands.CommandChallenge}, GetNonce24())
+	deviceRes := device.WriteUsdio(msg)
+	res, err := h.FromEncryptedDeviceResponse(deviceRes)
+	if err != nil {
+		return fmt.Errorf("failed to get challenge from device: %w", err)
+	}
+	nonce := res.(*blecommands.Challenge).Nonce
 
-	cmd = blecommands.NewEncryptedCommand(
-		crypto,
-		ctx.AuthId,
-		blecommands.CommandLockAction,
-		slices.Concat(
-			[]byte{byte(action)},
-			ctx.AppId,
-			[]byte{0x00},
-			nonce,
-		))
-	device.WriteUsdioWithCallback(
-		cmd.ToMessage(GetNonce24()),
-		func(b []byte, c chan int) []byte { return onLockResponse(b, c, crypto) },
-	)
+	lock := &blecommands.LockAction{
+		Action: action,
+		AppId:  ctx.AppId,
+		Nonce:  nonce,
+	}
+	msg = h.ToEncryptedMessage(lock, GetNonce24())
+	cb := func(b []byte, c chan int) []byte { return onLockResponse(b, c, h) }
+	device.WriteUsdioWithCallback(msg, cb)
 
 	device.Disconnect()
 	return nil
 }
 
-func onLockResponse(buf []byte, sem chan int, crypto blecommands.Crypto) []byte {
+func onLockResponse(buf []byte, sem chan int, h *blecommands.BleHandler) []byte {
 	slog.Debug("Received response", "buf", fmt.Sprintf("%x", buf))
-	res := blecommands.FromEncryptedDeviceResponse(crypto, buf)
-	slog.Info("Received lock action response", "cmd", res.GetCommandCode(), "payload", res.GetPayload())
-	if (res.GetCommandCode() == blecommands.CommandStatus && slices.Equal(res.GetPayload(), []byte{0x00})) || res.GetCommandCode() == blecommands.CommandErrorReport {
+	res, err := h.FromEncryptedDeviceResponse(buf)
+	if err != nil {
+		slog.Error("Failed to decrypt response", "err", err)
+		<-sem
+		return buf
+	}
+	slog.Info("Received lock action response", "cmd", res.GetCommandCode(), "payload", res)
+	if res.GetCommandCode() == blecommands.CommandStatus && slices.Equal(res.GetPayload(), []byte{0x00}) {
 		<-sem
 	}
 	return buf

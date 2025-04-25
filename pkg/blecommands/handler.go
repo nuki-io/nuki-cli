@@ -7,19 +7,19 @@ import (
 	"slices"
 )
 
-type bleHandler struct {
+type BleHandler struct {
 	crypto Crypto
 	authId []byte
 }
 
-func NewBleHandler(crypto Crypto, authId []byte) bleHandler {
-	return bleHandler{
+func NewBleHandler(crypto Crypto, authId []byte) *BleHandler {
+	return &BleHandler{
 		crypto: crypto,
 		authId: authId,
 	}
 }
 
-func (h *bleHandler) ToMessage(c Command) []byte {
+func (h *BleHandler) ToMessage(c Command) []byte {
 	payload := c.GetPayload()
 	res := make([]byte, 2+len(payload))
 	binary.LittleEndian.PutUint16(res, uint16(c.GetCommandCode()))
@@ -30,7 +30,7 @@ func (h *bleHandler) ToMessage(c Command) []byte {
 	return res
 }
 
-func (h *bleHandler) ToEncryptedMessage(c Command, nonce []byte) []byte {
+func (h *BleHandler) ToEncryptedMessage(c Command, nonce []byte) []byte {
 	payload := c.GetPayload()
 	// length = authId + command + payload length + CRC
 	pdata := make([]byte, 0, 4+2+len(payload)+2)
@@ -49,7 +49,7 @@ func (h *bleHandler) ToEncryptedMessage(c Command, nonce []byte) []byte {
 	return slices.Concat(adata, pdataEnc)
 }
 
-func (h *bleHandler) FromDeviceResponse(b []byte) (Command, error) {
+func (h *BleHandler) FromDeviceResponse(b []byte) (Command, error) {
 	if len(b) < 4 {
 		return nil, fmt.Errorf("invalid response length: %d. must be at least 4 bytes", len(b))
 	}
@@ -78,4 +78,50 @@ func (h *bleHandler) FromDeviceResponse(b []byte) (Command, error) {
 		return cmd, fmt.Errorf("error report: %x", payload)
 	}
 	return cmd, nil
+}
+
+func (h *BleHandler) FromEncryptedDeviceResponse(b []byte) (Command, error) {
+	nonce := b[0:24]
+	authId := b[24:28]
+	// msgLen := b[28:30]
+	if !slices.Equal(authId, h.authId) {
+		return nil, fmt.Errorf("authId mismatch: expected %x, got %x", h.authId, authId)
+	}
+
+	pdata, err := h.crypto.Decrypt(nonce, b[30:])
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt response: %w", err)
+	}
+
+	// TODO: the code below is mostly the same as the one in FromDeviceResponse but with a different offset for the CRC calculation
+	// pdata = authId[4] + command[2] + payload + crc[2]
+	crcExpect := CRC(pdata[:len(pdata)-2])
+	crcReceived := binary.LittleEndian.Uint16(pdata[len(pdata)-2:])
+	cmdCode := CommandCode(binary.LittleEndian.Uint16(pdata[4:6]))
+	payload := pdata[6 : len(pdata)-2]
+
+	slog.Debug(
+		"Received encrypted response from smartlock",
+		"cmd", cmdCode.String(),
+		"payload", fmt.Sprintf("%x", payload),
+		"crcReceived", fmt.Sprintf("%x", crcReceived),
+		"crcExpect", fmt.Sprintf("%x", crcExpect))
+
+	if crcReceived != crcExpect {
+		return nil, fmt.Errorf("CRC mismatch: expected %x, got %x", crcExpect, crcReceived)
+	}
+	cmdImpl, ok := cmdImplMap[cmdCode]
+	if !ok {
+		return nil, fmt.Errorf("unhandled response command code: %x, name: %s", int(cmdCode), cmdCode)
+	}
+	cmd := cmdImpl()
+	if cmdCode == CommandErrorReport {
+		return cmd, fmt.Errorf("error report: %x", payload)
+	}
+	err = cmd.FromMessage(payload)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse command: %w", err)
+	}
+	return cmd, nil
+
 }
