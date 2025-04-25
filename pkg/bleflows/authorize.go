@@ -28,11 +28,12 @@ func (f *Flow) Authorize(id string) error {
 		panic(fmt.Sprintf("Cannot connect to device %s. %s", id, err.Error()))
 	}
 	device.DiscoverPairing()
+	h := blecommands.NewBleHandler(nil, nil)
 
 	ctx := NewAuthorizeContext()
 	slog.Info("Requesting public key from smartlock")
-	cmd := blecommands.NewUnencryptedRequestData(blecommands.PublicKey)
-	res := blecommands.FromDeviceResponse(device.WritePairing(cmd.ToMessage()))
+	msg := h.ToMessage(&blecommands.RequestData{CommandIdentifier: blecommands.CommandPublicKey})
+	res := blecommands.FromDeviceResponse(device.WritePairing(msg))
 	ctx.SlPublicKey = res.GetPayload()
 	slog.Info("Received public key from smartlock", "pubkey", fmt.Sprintf("%x", ctx.SlPublicKey))
 
@@ -44,8 +45,8 @@ func (f *Flow) Authorize(id string) error {
 	}
 
 	slog.Info("Sending CLI public key", "pubkey", fmt.Sprintf("%x", ctx.CliPublicKey))
-	cmd = blecommands.NewUnencryptedCommand(blecommands.PublicKey, ctx.CliPublicKey)
-	res = blecommands.FromDeviceResponse(device.WritePairing(cmd.ToMessage()))
+	msg = h.ToMessage(&blecommands.PublicKey{PublicKey: ctx.CliPublicKey})
+	res = blecommands.FromDeviceResponse(device.WritePairing(msg))
 	challenge := res.GetPayload()
 	slog.Debug("Received challenge", "challenge", fmt.Sprintf("%x", challenge))
 
@@ -54,10 +55,8 @@ func (f *Flow) Authorize(id string) error {
 
 	authenticator := ctx.GetMessageAuthenticator(ctx.CliPublicKey, ctx.SlPublicKey, challenge)
 	slog.Info("Sending authenticator", "authenticator", fmt.Sprintf("%x", authenticator))
-	cmd = blecommands.NewUnencryptedCommand(
-		blecommands.AuthorizationAuthenticator,
-		authenticator)
-	res = blecommands.FromDeviceResponse(device.WritePairing(cmd.ToMessage()))
+	msg = h.ToMessage(&blecommands.AuthorizationAuthenticator{Authenticator: authenticator})
+	res = blecommands.FromDeviceResponse(device.WritePairing(msg))
 	challenge = res.GetPayload()
 	slog.Debug("Received challenge", "challenge", fmt.Sprintf("%x", challenge))
 
@@ -65,37 +64,24 @@ func (f *Flow) Authorize(id string) error {
 	if err != nil {
 		hostname = "unknown host"
 	}
-	appName := [32]byte{}
-	copy(appName[:], fmt.Appendf(nil, "Nuki CLI (%s)", hostname))
-	payload := slices.Concat(
-		[]byte{0x00}, // App,
-		ctx.AppId,
-		appName[:],
-		GetNonce32(),
-	)
-	authenticator = ctx.GetMessageAuthenticator(payload, challenge)
+	authData := &blecommands.AuthorizationData{
+		IdType: 0x00,
+		Id:     ctx.AppId,
+		Name:   fmt.Sprintf("Nuki CLI (%s)", hostname),
+		Nonce:  GetNonce32(),
+	}
+	authenticator = ctx.GetMessageAuthenticator(authData.GetAuthenticatorPayload(), challenge)
+	authData.Authenticator = authenticator
 
-	cmd = blecommands.NewUnencryptedCommand(
-		blecommands.AuthorizationData,
-		slices.Concat(
-			authenticator,
-			payload,
-		),
-	)
-	res = blecommands.FromDeviceResponse(device.WritePairing(cmd.ToMessage()))
+	msg = h.ToMessage(authData)
+	res = blecommands.FromDeviceResponse(device.WritePairing(msg))
 	ctx.AuthId = res.GetPayload()[32 : 32+4]
 	nonceK := res.GetPayload()[52:]
 	slog.Debug("Received authorization data", "authId", ctx.AuthId, "nonceK", nonceK)
 
 	authenticator = ctx.GetMessageAuthenticator(ctx.AuthId, nonceK)
-	cmd = blecommands.NewUnencryptedCommand(
-		blecommands.AuthorizationIDConfirmation,
-		slices.Concat(
-			authenticator,
-			ctx.AuthId,
-		),
-	)
-	res = blecommands.FromDeviceResponse(device.WritePairing(cmd.ToMessage()))
+	msg = h.ToMessage(&blecommands.AuthorizationIDConfirmation{Authenticator: authenticator, AuthId: ctx.AuthId})
+	res = blecommands.FromDeviceResponse(device.WritePairing(msg))
 	complete := res.GetPayload()
 	slog.Debug("Pairing complete", "complete", fmt.Sprintf("%x", complete))
 	ctx.Store(id)

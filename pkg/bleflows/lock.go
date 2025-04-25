@@ -28,14 +28,14 @@ func (f *Flow) PerformLockOperation(id string, action blecommands.Action) error 
 
 	crypto := blecommands.NewCrypto(ctx.SharedKey)
 
-	cmd := blecommands.NewEncryptedRequestData(crypto, ctx.AuthId, blecommands.Challenge)
+	cmd := blecommands.NewEncryptedRequestData(crypto, ctx.AuthId, blecommands.CommandChallenge)
 	res := blecommands.FromEncryptedDeviceResponse(crypto, device.WriteUsdio(cmd.ToMessage(GetNonce24())))
 	nonce := res.GetPayload()
 
 	cmd = blecommands.NewEncryptedCommand(
 		crypto,
 		ctx.AuthId,
-		blecommands.LockAction,
+		blecommands.CommandLockAction,
 		slices.Concat(
 			[]byte{byte(action)},
 			ctx.AppId,
@@ -55,7 +55,7 @@ func onLockResponse(buf []byte, sem chan int, crypto blecommands.Crypto) []byte 
 	slog.Debug("Received response", "buf", fmt.Sprintf("%x", buf))
 	res := blecommands.FromEncryptedDeviceResponse(crypto, buf)
 	slog.Info("Received lock action response", "cmd", res.GetCommandCode(), "payload", res.GetPayload())
-	if (res.GetCommandCode() == blecommands.Status && slices.Equal(res.GetPayload(), []byte{0x00})) || res.GetCommandCode() == blecommands.ErrorReport {
+	if (res.GetCommandCode() == blecommands.CommandStatus && slices.Equal(res.GetPayload(), []byte{0x00})) || res.GetCommandCode() == blecommands.CommandErrorReport {
 		<-sem
 	}
 	return buf

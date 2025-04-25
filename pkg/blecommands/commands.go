@@ -2,64 +2,66 @@ package blecommands
 
 import (
 	"encoding/binary"
+	"fmt"
 	"slices"
 )
 
+//go:generate stringer -type=CommandCode
 type CommandCode uint16
 
 const (
-	RequestData                 CommandCode = 0x0001
-	PublicKey                   CommandCode = 0x0003
-	Challenge                   CommandCode = 0x0004
-	AuthorizationAuthenticator  CommandCode = 0x0005
-	AuthorizationData           CommandCode = 0x0006
-	AuthorizationID             CommandCode = 0x0007
-	RemoveAuthorizationEntry    CommandCode = 0x0008
-	RequestAuthorizationEntries CommandCode = 0x0009
-	AuthorizationEntry          CommandCode = 0x000A
-	AuthorizationDataInvite     CommandCode = 0x000B
-	KeyturnerStates             CommandCode = 0x000C
-	LockAction                  CommandCode = 0x000D
-	Status                      CommandCode = 0x000E
-	MostRecentCommand           CommandCode = 0x000F
-	OpeningsClosingsSummary     CommandCode = 0x0010
-	BatteryReport               CommandCode = 0x0011
-	ErrorReport                 CommandCode = 0x0012
-	SetConfig                   CommandCode = 0x0013
-	RequestConfig               CommandCode = 0x0014
-	Config                      CommandCode = 0x0015
-	SetSecurityPIN              CommandCode = 0x0019
-	RequestCalibration          CommandCode = 0x001A
-	RequestReboot               CommandCode = 0x001D
-	AuthorizationIDConfirmation CommandCode = 0x001E
-	AuthorizationIDInvite       CommandCode = 0x001F
-	VerifySecurityPIN           CommandCode = 0x0020
-	UpdateTime                  CommandCode = 0x0021
-	UpdateAuthorizationEntry    CommandCode = 0x0025
-	AuthorizationEntryCount     CommandCode = 0x0027
-	RequestLogEntries           CommandCode = 0x0031
-	LogEntry                    CommandCode = 0x0032
-	LogEntryCount               CommandCode = 0x0033
-	EnableLogging               CommandCode = 0x0034
-	SetAdvancedConfig           CommandCode = 0x0035
-	RequestAdvancedConfig       CommandCode = 0x0036
-	AdvancedConfig              CommandCode = 0x0037
-	AddTimeControlEntry         CommandCode = 0x0039
-	TimeControlEntryID          CommandCode = 0x003A
-	RemoveTimeControlEntry      CommandCode = 0x003B
-	RequestTimeControlEntries   CommandCode = 0x003C
-	TimeControlEntryCount       CommandCode = 0x003D
-	TimeControlEntry            CommandCode = 0x003E
-	UpdateTimeControlEntry      CommandCode = 0x003F
-	AddKeypadCode               CommandCode = 0x0041
-	KeypadCodeID                CommandCode = 0x0042
-	RequestKeypadCodes          CommandCode = 0x0043
-	KeypadCodeCount             CommandCode = 0x0044
-	KeypadCode                  CommandCode = 0x0045
-	UpdateKeypadCode            CommandCode = 0x0046
-	RemoveKeypadCode            CommandCode = 0x0047
-	AuthorizationInfo           CommandCode = 0x004C
-	SimpleLockAction            CommandCode = 0x0100
+	CommandRequestData                 CommandCode = 0x0001
+	CommandPublicKey                   CommandCode = 0x0003
+	CommandChallenge                   CommandCode = 0x0004
+	CommandAuthorizationAuthenticator  CommandCode = 0x0005
+	CommandAuthorizationData           CommandCode = 0x0006
+	CommandAuthorizationID             CommandCode = 0x0007
+	CommandRemoveAuthorizationEntry    CommandCode = 0x0008
+	CommandRequestAuthorizationEntries CommandCode = 0x0009
+	CommandAuthorizationEntry          CommandCode = 0x000A
+	CommandAuthorizationDataInvite     CommandCode = 0x000B
+	CommandKeyturnerStates             CommandCode = 0x000C
+	CommandLockAction                  CommandCode = 0x000D
+	CommandStatus                      CommandCode = 0x000E
+	CommandMostRecentCommand           CommandCode = 0x000F
+	CommandOpeningsClosingsSummary     CommandCode = 0x0010
+	CommandBatteryReport               CommandCode = 0x0011
+	CommandErrorReport                 CommandCode = 0x0012
+	CommandSetConfig                   CommandCode = 0x0013
+	CommandRequestConfig               CommandCode = 0x0014
+	CommandConfig                      CommandCode = 0x0015
+	CommandSetSecurityPIN              CommandCode = 0x0019
+	CommandRequestCalibration          CommandCode = 0x001A
+	CommandRequestReboot               CommandCode = 0x001D
+	CommandAuthorizationIDConfirmation CommandCode = 0x001E
+	CommandAuthorizationIDInvite       CommandCode = 0x001F
+	CommandVerifySecurityPIN           CommandCode = 0x0020
+	CommandUpdateTime                  CommandCode = 0x0021
+	CommandUpdateAuthorizationEntry    CommandCode = 0x0025
+	CommandAuthorizationEntryCount     CommandCode = 0x0027
+	CommandRequestLogEntries           CommandCode = 0x0031
+	CommandLogEntry                    CommandCode = 0x0032
+	CommandLogEntryCount               CommandCode = 0x0033
+	CommandEnableLogging               CommandCode = 0x0034
+	CommandSetAdvancedConfig           CommandCode = 0x0035
+	CommandRequestAdvancedConfig       CommandCode = 0x0036
+	CommandAdvancedConfig              CommandCode = 0x0037
+	CommandAddTimeControlEntry         CommandCode = 0x0039
+	CommandTimeControlEntryID          CommandCode = 0x003A
+	CommandRemoveTimeControlEntry      CommandCode = 0x003B
+	CommandRequestTimeControlEntries   CommandCode = 0x003C
+	CommandTimeControlEntryCount       CommandCode = 0x003D
+	CommandTimeControlEntry            CommandCode = 0x003E
+	CommandUpdateTimeControlEntry      CommandCode = 0x003F
+	CommandAddKeypadCode               CommandCode = 0x0041
+	CommandKeypadCodeID                CommandCode = 0x0042
+	CommandRequestKeypadCodes          CommandCode = 0x0043
+	CommandKeypadCodeCount             CommandCode = 0x0044
+	CommandKeypadCode                  CommandCode = 0x0045
+	CommandUpdateKeypadCode            CommandCode = 0x0046
+	CommandRemoveKeypadCode            CommandCode = 0x0047
+	CommandAuthorizationInfo           CommandCode = 0x004C
+	CommandSimpleLockAction            CommandCode = 0x0100
 )
 
 type Action uint8
@@ -78,6 +80,61 @@ var (
 	FobAction3 Action = 0x83
 )
 
+var cmdImplMap = map[CommandCode]func() Command{
+	CommandRequestData: func() Command { return Command(&RequestData{}) },
+	// CommandPublicKey:                   func() Command { return Command(&PublicKey{}) },
+	// CommandChallenge:                   func() Command { return Command(&Challenge{}) },
+	// CommandAuthorizationAuthenticator:  func() Command { return Command(&AuthorizationAuthenticator{}) },
+	// CommandAuthorizationData:           func() Command { return Command(&AuthorizationData{}) },
+	// CommandAuthorizationID:             func() Command { return Command(&AuthorizationID{}) },
+	// CommandRemoveAuthorizationEntry:    func() Command { return Command(&RemoveAuthorizationEntry{}) },
+	// CommandRequestAuthorizationEntries: func() Command { return Command(&RequestAuthorizationEntries{}) },
+	// CommandAuthorizationEntry:          func() Command { return Command(&AuthorizationEntry{}) },
+	// CommandAuthorizationDataInvite:     func() Command { return Command(&AuthorizationDataInvite{}) },
+	// CommandKeyturnerStates:             func() Command { return Command(&KeyturnerStates{}) },
+	// CommandLockAction:                  func() Command { return Command(&LockAction{}) },
+	// CommandStatus:                      func() Command { return Command(&Status{}) },
+	// CommandMostRecentCommand:           func() Command { return Command(&MostRecentCommand{}) },
+	// CommandOpeningsClosingsSummary:     func() Command { return Command(&OpeningsClosingsSummary{}) },
+	// CommandBatteryReport:               func() Command { return Command(&BatteryReport{}) },
+	// CommandErrorReport:                 func() Command { return Command(&ErrorReport{}) },
+	// CommandSetConfig:                   func() Command { return Command(&SetConfig{}) },
+	// CommandRequestConfig:               func() Command { return Command(&RequestConfig{}) },
+	// CommandConfig:                      func() Command { return Command(&Config{}) },
+	// CommandSetSecurityPIN:              func() Command { return Command(&SetSecurityPIN{}) },
+	// CommandRequestCalibration:          func() Command { return Command(&RequestCalibration{}) },
+	// CommandRequestReboot:               func() Command { return Command(&RequestReboot{}) },
+	// CommandAuthorizationIDConfirmation: func() Command { return Command(&AuthorizationIDConfirmation{}) },
+	// CommandAuthorizationIDInvite:       func() Command { return Command(&AuthorizationIDInvite{}) },
+	// CommandVerifySecurityPIN:           func() Command { return Command(&VerifySecurityPIN{}) },
+	// CommandUpdateTime:                  func() Command { return Command(&UpdateTime{}) },
+	// CommandUpdateAuthorizationEntry:    func() Command { return Command(&UpdateAuthorizationEntry{}) },
+	// CommandAuthorizationEntryCount:     func() Command { return Command(&AuthorizationEntryCount{}) },
+	// CommandRequestLogEntries:           func() Command { return Command(&RequestLogEntries{}) },
+	// CommandLogEntry:                    func() Command { return Command(&LogEntry{}) },
+	// CommandLogEntryCount:               func() Command { return Command(&LogEntryCount{}) },
+	// CommandEnableLogging:               func() Command { return Command(&EnableLogging{}) },
+	// CommandSetAdvancedConfig:           func() Command { return Command(&SetAdvancedConfig{}) },
+	// CommandRequestAdvancedConfig:       func() Command { return Command(&RequestAdvancedConfig{}) },
+	// CommandAdvancedConfig:              func() Command { return Command(&AdvancedConfig{}) },
+	// CommandAddTimeControlEntry:         func() Command { return Command(&AddTimeControlEntry{}) },
+	// CommandTimeControlEntryID:          func() Command { return Command(&TimeControlEntryID{}) },
+	// CommandRemoveTimeControlEntry:      func() Command { return Command(&RemoveTimeControlEntry{}) },
+	// CommandRequestTimeControlEntries:   func() Command { return Command(&RequestTimeControlEntries{}) },
+	// CommandTimeControlEntryCount:       func() Command { return Command(&TimeControlEntryCount{}) },
+	// CommandTimeControlEntry:            func() Command { return Command(&TimeControlEntry{}) },
+	// CommandUpdateTimeControlEntry:      func() Command { return Command(&UpdateTimeControlEntry{}) },
+	// CommandAddKeypadCode:               func() Command { return Command(&AddKeypadCode{}) },
+	// CommandKeypadCodeID:                func() Command { return Command(&KeypadCodeID{}) },
+	// CommandRequestKeypadCodes:          func() Command { return Command(&RequestKeypadCodes{}) },
+	// CommandKeypadCodeCount:             func() Command { return Command(&KeypadCodeCount{}) },
+	// CommandKeypadCode:                  func() Command { return Command(&KeypadCode{}) },
+	// CommandUpdateKeypadCode:            func() Command { return Command(&UpdateKeypadCode{}) },
+	// CommandRemoveKeypadCode:            func() Command { return Command(&RemoveKeypadCode{}) },
+	// CommandAuthorizationInfo:           func() Command { return Command(&AuthorizationInfo{}) },
+	// CommandSimpleLockAction:            func() Command { return Command(&SimpleLockAction{}) },
+}
+
 type UnencryptedCommand struct {
 	command CommandCode
 	payload []byte
@@ -94,7 +151,7 @@ func NewUnencryptedRequestData(request CommandCode) UnencryptedCommand {
 	payload := make([]byte, 2)
 	binary.LittleEndian.PutUint16(payload, uint16(request))
 	return UnencryptedCommand{
-		command: RequestData,
+		command: CommandRequestData,
 		payload: payload,
 	}
 }
@@ -131,7 +188,7 @@ func NewEncryptedRequestData(crypto Crypto, authId []byte, request CommandCode) 
 	return EncryptedCommand{
 		crypto:  crypto,
 		authId:  authId,
-		command: RequestData,
+		command: CommandRequestData,
 		payload: payload,
 	}
 }
@@ -152,4 +209,137 @@ func (c *EncryptedCommand) ToMessage(nonce []byte) []byte {
 	adata = append(adata, c.authId...)
 	adata = binary.LittleEndian.AppendUint16(adata, uint16(len(pdataEnc)))
 	return slices.Concat(adata, pdataEnc)
+}
+
+func ToEncryptedMessage(crypto Crypto, authId []byte, nonce []byte, c Command) []byte {
+	payload := c.GetPayload()
+	// length = authId + command + payload length + CRC
+	pdata := make([]byte, 0, 4+2+len(payload)+2)
+	pdata = append(pdata, authId...)
+	pdata = binary.LittleEndian.AppendUint16(pdata, uint16(c.GetCommandCode()))
+	pdata = append(pdata, payload...)
+	pdata = binary.LittleEndian.AppendUint16(pdata, CRC(pdata))
+
+	pdataEnc, _ := crypto.Encrypt(nonce, pdata)
+
+	// length = nonce + authId + encrypted message length
+	adata := make([]byte, 0, 24+4+2)
+	adata = append(adata, nonce...)
+	adata = append(adata, authId...)
+	adata = binary.LittleEndian.AppendUint16(adata, uint16(len(pdataEnc)))
+	return slices.Concat(adata, pdataEnc)
+}
+
+type Command interface {
+	FromMessage([]byte) error
+	GetCommandCode() CommandCode
+	GetPayload() []byte
+}
+
+type RequestData struct {
+	CommandIdentifier CommandCode
+	// AdditionalData    []byte
+}
+
+func (c *RequestData) GetCommandCode() CommandCode {
+	return CommandRequestData
+}
+
+func (c *RequestData) FromMessage([]byte) error {
+	return nil
+}
+
+func (c *RequestData) GetPayload() []byte {
+	payload := make([]byte, 2)
+	binary.LittleEndian.PutUint16(payload, uint16(c.CommandIdentifier))
+	return payload
+}
+
+type PublicKey struct {
+	PublicKey []byte
+}
+
+func (c *PublicKey) GetCommandCode() CommandCode {
+	return CommandPublicKey
+}
+func (c *PublicKey) FromMessage(b []byte) error {
+	if len(b) == 0 {
+		return fmt.Errorf("public key length must be more than 0")
+	}
+	c.PublicKey = b
+	return nil
+}
+func (c *PublicKey) GetPayload() []byte {
+	return c.PublicKey
+}
+
+type AuthorizationAuthenticator struct {
+	Authenticator []byte
+}
+
+func (c *AuthorizationAuthenticator) GetCommandCode() CommandCode {
+	return CommandAuthorizationAuthenticator
+}
+func (c *AuthorizationAuthenticator) FromMessage(b []byte) error {
+	if len(b) == 0 {
+		return fmt.Errorf("authenticator length must be more than 0")
+	}
+	c.Authenticator = b
+	return nil
+}
+func (c *AuthorizationAuthenticator) GetPayload() []byte {
+	return c.Authenticator
+}
+
+type AuthorizationData struct {
+	// TODO: should use more concrete types
+	Authenticator []byte
+	IdType        uint8 // 0x00 = App, 0x01 = Bridge, 0x02 = Fob, 0x03 = Keypad
+	Id            []byte
+	Name          string
+	Nonce         []byte
+}
+
+func (c *AuthorizationData) GetCommandCode() CommandCode {
+	return CommandAuthorizationData
+}
+func (c *AuthorizationData) FromMessage(b []byte) error {
+	return fmt.Errorf("not implemented")
+}
+func (c *AuthorizationData) GetPayload() []byte {
+	appName := [32]byte{}
+	copy(appName[:], c.Name)
+	return slices.Concat(
+		c.Authenticator,
+		[]byte{c.IdType},
+		c.Id,
+		appName[:],
+		c.Nonce,
+	)
+}
+func (c *AuthorizationData) GetAuthenticatorPayload() []byte {
+	// TODO: maybe less duplication from GetPayload?
+	appName := [32]byte{}
+	copy(appName[:], c.Name)
+	return slices.Concat(
+		[]byte{c.IdType},
+		c.Id,
+		appName[:],
+		c.Nonce,
+	)
+}
+
+type AuthorizationIDConfirmation struct {
+	Authenticator []byte
+	AuthId        []byte
+}
+
+func (c *AuthorizationIDConfirmation) GetCommandCode() CommandCode {
+	return CommandAuthorizationIDConfirmation
+}
+func (c *AuthorizationIDConfirmation) FromMessage(b []byte) error {
+	return fmt.Errorf("not implemented")
+}
+func (c *AuthorizationIDConfirmation) GetPayload() []byte {
+	return slices.Concat(c.Authenticator, c.AuthId)
 }
