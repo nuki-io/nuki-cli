@@ -11,6 +11,7 @@ type Flow struct {
 	ble     *nukible.NukiBle
 	handler *blecommands.BleHandler
 	device  *nukible.Device
+	authCtx *AuthorizeContext
 }
 
 func NewFlow(ble *nukible.NukiBle) *Flow {
@@ -31,6 +32,20 @@ func (f *Flow) Connect(id string) error {
 	}
 	f.device = device
 	return nil
+}
+func (f *Flow) LoadAuthContext(id string) {
+	f.authCtx = &AuthorizeContext{}
+	err := f.authCtx.Load(id)
+	if err != nil {
+		panic(fmt.Errorf("device is not paired yet. %s", err.Error()))
+	}
+}
+func (f *Flow) InitializeHandler() {
+	f.handler = blecommands.NewBleHandler(nil, nil)
+}
+func (f *Flow) InitializeHandlerWithCrypto() {
+	crypto := blecommands.NewCrypto(f.authCtx.SharedKey)
+	f.handler = blecommands.NewBleHandler(crypto, f.authCtx.AuthId)
 }
 
 func (f *Flow) getChallenge() ([]byte, error) {

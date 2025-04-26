@@ -9,50 +9,31 @@ import (
 )
 
 func (f *Flow) PerformLockOperation(id string, action blecommands.Action) error {
-	addr, ok := f.ble.GetDeviceAddress(id)
-	if !ok {
-		return fmt.Errorf("requested device with MAC %s was not discovered", id)
-	}
+	f.LoadAuthContext(id)
+	f.Connect(id)
+	f.device.DiscoverKeyturnerUsdio()
+	f.InitializeHandlerWithCrypto()
 
-	ctx := &AuthorizeContext{}
-	err := ctx.Load(id)
-	if err != nil {
-		return fmt.Errorf("device is not paired yet. %s", err.Error())
-	}
-
-	device, err := f.ble.Connect(*addr)
-	if err != nil {
-		return fmt.Errorf("cannot connect to device %s. %s", id, err.Error())
-	}
-	device.DiscoverKeyturnerUsdio()
-
-	crypto := blecommands.NewCrypto(ctx.SharedKey)
-	h := blecommands.NewBleHandler(crypto, ctx.AuthId)
-
-	msg := h.ToEncryptedMessage(&blecommands.RequestData{CommandIdentifier: blecommands.CommandChallenge}, GetNonce24())
-	deviceRes := device.WriteUsdio(msg)
-	res, err := h.FromEncryptedDeviceResponse(deviceRes)
+	nonce, err := f.getChallenge()
 	if err != nil {
 		return fmt.Errorf("failed to get challenge from device: %w", err)
 	}
-	nonce := res.(*blecommands.Challenge).Nonce
 
 	lock := &blecommands.LockAction{
 		Action: action,
-		AppId:  ctx.AppId,
+		AppId:  f.authCtx.AppId,
 		Nonce:  nonce,
 	}
-	msg = h.ToEncryptedMessage(lock, GetNonce24())
-	cb := func(b []byte, c chan int) []byte { return onLockResponse(b, c, h) }
-	device.WriteUsdioWithCallback(msg, cb)
+	msg := f.handler.ToEncryptedMessage(lock, GetNonce24())
+	f.device.WriteUsdioWithCallback(msg, f.onLockResponse)
 
-	device.Disconnect()
+	f.device.Disconnect()
 	return nil
 }
 
-func onLockResponse(buf []byte, sem chan int, h *blecommands.BleHandler) []byte {
+func (f *Flow) onLockResponse(buf []byte, sem chan int) []byte {
 	slog.Debug("Received response", "buf", fmt.Sprintf("%x", buf))
-	res, err := h.FromEncryptedDeviceResponse(buf)
+	res, err := f.handler.FromEncryptedDeviceResponse(buf)
 	if err != nil {
 		slog.Error("Failed to decrypt response", "err", err)
 		<-sem
