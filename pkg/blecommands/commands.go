@@ -1,8 +1,10 @@
 package blecommands
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
+	"math"
 	"slices"
 	"time"
 )
@@ -109,7 +111,7 @@ var cmdImplMap = map[CommandCode]func() Command{
 	CommandErrorReport: func() Command { return Command(&ErrorReport{}) },
 	// CommandSetConfig:                   func() Command { return Command(&SetConfig{}) },
 	// CommandRequestConfig:               func() Command { return Command(&RequestConfig{}) },
-	// CommandConfig:                      func() Command { return Command(&Config{}) },
+	CommandConfig: func() Command { return Command(&Config{}) },
 	// CommandSetSecurityPIN:              func() Command { return Command(&SetSecurityPIN{}) },
 	// CommandRequestCalibration:          func() Command { return Command(&RequestCalibration{}) },
 	// CommandRequestReboot:               func() Command { return Command(&RequestReboot{}) },
@@ -142,6 +144,59 @@ var cmdImplMap = map[CommandCode]func() Command{
 	// CommandRemoveKeypadCode:            func() Command { return Command(&RemoveKeypadCode{}) },
 	// CommandAuthorizationInfo:           func() Command { return Command(&AuthorizationInfo{}) },
 	// CommandSimpleLockAction:            func() Command { return Command(&SimpleLockAction{}) },
+}
+var timezoneMap = map[uint16]string{
+	0:     "Africa/Cairo",
+	1:     "Africa/Lagos",
+	2:     "Africa/Maputo",
+	3:     "Africa/Nairobi",
+	4:     "America/Anchorage",
+	5:     "America/Argentina/Buenos_Aires",
+	6:     "America/Chicago",
+	7:     "America/Denver",
+	8:     "America/Halifax",
+	9:     "America/Los_Angeles",
+	10:    "America/Manaus",
+	11:    "America/Mexico_City",
+	12:    "America/New_York",
+	13:    "America/Phoenix",
+	14:    "America/Regina",
+	15:    "America/Santiago",
+	16:    "America/Sao_Paulo",
+	17:    "America/St_Johns",
+	18:    "Asia/Bangkok",
+	19:    "Asia/Dubai",
+	20:    "Asia/Hong_Kong",
+	21:    "Asia/Jerusalem",
+	22:    "Asia/Karachi",
+	23:    "Asia/Kathmandu",
+	24:    "Asia/Kolkata",
+	25:    "Asia/Riyadh",
+	26:    "Asia/Seoul",
+	27:    "Asia/Shanghai",
+	28:    "Asia/Tehran",
+	29:    "Asia/Tokyo",
+	30:    "Asia/Yangon",
+	31:    "Australia/Adelaide",
+	32:    "Australia/Brisbane",
+	33:    "Australia/Darwin",
+	34:    "Australia/Hobart",
+	35:    "Australia/Perth",
+	36:    "Australia/Sydney",
+	37:    "Europe/Berlin",
+	38:    "Europe/Helsinki",
+	39:    "Europe/Istanbul",
+	40:    "Europe/London",
+	41:    "Europe/Moscow",
+	42:    "Pacific/Auckland",
+	43:    "Pacific/Guam",
+	44:    "Pacific/Honolulu",
+	45:    "Pacific/Pago_Pago",
+	65535: "", // Special case:  No timezone
+}
+
+func byteToBool(b byte) bool {
+	return b != 0
 }
 
 type Command interface {
@@ -412,4 +467,120 @@ func (c *KeyturnerStates) FromMessage(b []byte) error {
 }
 func (c *KeyturnerStates) GetPayload() []byte {
 	panic("not implemented")
+}
+
+// Config Command 0x0015
+type Config struct {
+	NukiID           uint32
+	Name             string
+	Latitude         float32
+	Longitude        float32
+	AutoUnlatch      bool
+	PairingEnabled   bool
+	ButtonEnabled    bool
+	LedEnabled       bool
+	LedBrightness    uint8
+	CurrentTime      time.Time
+	TimezoneOffset   int16
+	DstMode          uint8
+	HasFob           bool
+	FobAction1       uint8
+	FobAction2       uint8
+	FobAction3       uint8
+	SingleLock       bool
+	AdvertisingMode  uint8
+	HasKeypad        bool
+	FirmwareVersion  string
+	HardwareRevision string
+	HomeKitStatus    uint8
+	TimezoneID       uint16
+	DeviceType       uint8
+	Capabilities     uint8
+	HasKeypad2       bool
+	MatterStatus     uint8
+}
+
+func (c *Config) GetTimezoneLocation() *time.Location {
+	tz, err := time.LoadLocation(timezoneMap[c.TimezoneID])
+	if err != nil {
+		return time.UTC
+	}
+	return tz
+}
+func (c *Config) FromMessage(b []byte) error {
+	if len(b) < 78 {
+		return fmt.Errorf("invalid Config message length")
+	}
+
+	c.NukiID = binary.LittleEndian.Uint32(b[0:4])
+	c.Name = string(bytes.Trim(b[4:36], "\x00"))
+
+	c.Latitude = math.Float32frombits(binary.LittleEndian.Uint32(b[36:40]))
+	c.Longitude = math.Float32frombits(binary.LittleEndian.Uint32(b[40:44]))
+	c.AutoUnlatch = byteToBool(b[44])
+	c.PairingEnabled = byteToBool(b[45])
+	c.ButtonEnabled = byteToBool(b[46])
+	c.LedEnabled = byteToBool(b[47])
+	c.LedBrightness = b[48]
+
+	year := int(binary.LittleEndian.Uint16(b[49:51]))
+	month := int(b[51])
+	day := int(b[52])
+	hour := int(b[53])
+	minute := int(b[54])
+	second := int(b[55])
+
+	c.TimezoneID = binary.LittleEndian.Uint16(b[72:74])
+	tz := c.GetTimezoneLocation()
+	c.CurrentTime = time.Date(year, time.Month(month), day, hour, minute, second, 0, tz)
+
+	c.TimezoneOffset = int16(binary.LittleEndian.Uint16(b[56:58]))
+	c.DstMode = b[58]
+	c.HasFob = byteToBool(b[59])
+	c.FobAction1 = b[60]
+	c.FobAction2 = b[61]
+	c.FobAction3 = b[62]
+	c.SingleLock = byteToBool(b[63])
+	c.AdvertisingMode = b[64]
+	c.HasKeypad = byteToBool(b[65])
+
+	c.FirmwareVersion = fmt.Sprintf("%d.%d.%d", b[66], b[67], b[68])
+	c.HardwareRevision = fmt.Sprintf("%d.%d", b[69], b[70])
+
+	c.HomeKitStatus = b[71]
+	// timezoneID is set above, next to the current time
+	c.DeviceType = b[74]
+	c.Capabilities = b[75]
+	c.HasKeypad2 = byteToBool(b[76])
+	c.MatterStatus = b[77]
+
+	return nil
+}
+
+func (c *Config) GetCommandCode() CommandCode {
+	return CommandConfig
+}
+
+func (c *Config) GetPayload() []byte {
+	panic("not implemented")
+}
+
+type RequestConfig struct {
+	Nonce []byte
+}
+
+func (c *RequestConfig) FromMessage(b []byte) error {
+	if len(b) != 32 {
+		return fmt.Errorf("invalid RequestConfig message length")
+	}
+	c.Nonce = b
+	return nil
+}
+
+func (c *RequestConfig) GetCommandCode() CommandCode {
+	return CommandRequestConfig
+}
+
+func (c *RequestConfig) GetPayload() []byte {
+	return c.Nonce
 }
