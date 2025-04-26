@@ -21,6 +21,7 @@ type AuthorizeContext struct {
 	SharedKey     []byte
 	AuthId        []byte
 	AppId         []byte
+	Name          string
 }
 
 func (ac *AuthorizeContext) toStorage() *authorizeContextStorage {
@@ -31,6 +32,7 @@ func (ac *AuthorizeContext) toStorage() *authorizeContextStorage {
 		SharedKey:     fmt.Sprintf("%x", ac.SharedKey),
 		AuthId:        fmt.Sprintf("%x", ac.AuthId),
 		AppId:         fmt.Sprintf("%x", ac.AppId),
+		Name:          ac.Name,
 	}
 }
 func (ac *AuthorizeContext) fromStorage(s *authorizeContextStorage) {
@@ -52,6 +54,7 @@ func (ac *AuthorizeContext) fromStorage(s *authorizeContextStorage) {
 	if v, err := hex.DecodeString(s.AppId); err == nil {
 		ac.AppId = v
 	}
+	ac.Name = s.Name
 }
 
 type authorizeContextStorage struct {
@@ -61,6 +64,7 @@ type authorizeContextStorage struct {
 	SharedKey     string
 	AuthId        string
 	AppId         string
+	Name          string
 }
 
 func NewAuthorizeContext() *AuthorizeContext {

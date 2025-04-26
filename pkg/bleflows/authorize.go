@@ -10,52 +10,38 @@ import (
 )
 
 func (f *Flow) Authorize(id string) error {
-	addr, ok := f.ble.GetDeviceAddress(id)
-	if !ok {
-		return fmt.Errorf("requested device with MAC %s was not discovered", id)
-	}
+	f.Connect(id)
+	f.device.DiscoverPairing()
+	f.InitializeHandler()
 
-	device, err := f.ble.Connect(*addr)
-	if err != nil {
-		panic(fmt.Sprintf("Cannot connect to device %s. %s", id, err.Error()))
-	}
-	device.DiscoverPairing()
-	h := blecommands.NewBleHandler(nil, nil)
-
-	ctx := NewAuthorizeContext()
+	f.authCtx = NewAuthorizeContext()
 	slog.Info("Requesting public key from smartlock")
-	msg := h.ToMessage(&blecommands.RequestData{CommandIdentifier: blecommands.CommandPublicKey})
-	res, err := h.FromDeviceResponse(device.WritePairing(msg))
+	msg := f.handler.ToMessage(&blecommands.RequestData{CommandIdentifier: blecommands.CommandPublicKey})
+	res, err := f.handler.FromDeviceResponse(f.device.WritePairing(msg))
 	if err != nil {
 		return fmt.Errorf("failed to get public key from device: %w", err)
 	}
-	ctx.SlPublicKey = res.(*blecommands.PublicKey).PublicKey
-	slog.Info("Received public key from smartlock", "pubkey", fmt.Sprintf("%x", ctx.SlPublicKey))
+	f.authCtx.SlPublicKey = res.(*blecommands.PublicKey).PublicKey
+	slog.Info("Received public key from smartlock", "pubkey", fmt.Sprintf("%x", f.authCtx.SlPublicKey))
 
-	// pubKey, privKey, err := box.GenerateKey(crypto_rand.Reader)
-	// ctx.CliPublicKey = pubKey[:]
-	// ctx.CliPrivateKey = privKey[:]
-	// if err != nil {
-	// 	panic(err)
-	// }
-	ctx.GenerateKeyPair()
+	f.authCtx.GenerateKeyPair()
 
-	slog.Info("Sending CLI public key", "pubkey", fmt.Sprintf("%x", ctx.CliPublicKey))
-	msg = h.ToMessage(&blecommands.PublicKey{PublicKey: ctx.CliPublicKey})
-	res, err = h.FromDeviceResponse(device.WritePairing(msg))
+	slog.Info("Sending CLI public key", "pubkey", fmt.Sprintf("%x", f.authCtx.CliPublicKey))
+	msg = f.handler.ToMessage(&blecommands.PublicKey{PublicKey: f.authCtx.CliPublicKey})
+	res, err = f.handler.FromDeviceResponse(f.device.WritePairing(msg))
 	if err != nil {
 		return fmt.Errorf("failed to send public key to device: %w", err)
 	}
 	challenge := res.(*blecommands.Challenge).Nonce
 	slog.Debug("Received challenge", "challenge", fmt.Sprintf("%x", challenge))
 
-	ctx.CalculateSharedKey()
-	slog.Info("Calculated shared key", "sharedKey", fmt.Sprintf("%x", ctx.SharedKey))
+	f.authCtx.CalculateSharedKey()
+	slog.Info("Calculated shared key", "sharedKey", fmt.Sprintf("%x", f.authCtx.SharedKey))
 
-	authenticator := ctx.GetMessageAuthenticator(ctx.CliPublicKey, ctx.SlPublicKey, challenge)
+	authenticator := f.authCtx.GetMessageAuthenticator(f.authCtx.CliPublicKey, f.authCtx.SlPublicKey, challenge)
 	slog.Info("Sending authenticator", "authenticator", fmt.Sprintf("%x", authenticator))
-	msg = h.ToMessage(&blecommands.AuthorizationAuthenticator{Authenticator: authenticator})
-	res, err = h.FromDeviceResponse(device.WritePairing(msg))
+	msg = f.handler.ToMessage(&blecommands.AuthorizationAuthenticator{Authenticator: authenticator})
+	res, err = f.handler.FromDeviceResponse(f.device.WritePairing(msg))
 	if err != nil {
 		return fmt.Errorf("failed to send authenticator to device: %w", err)
 	}
@@ -68,36 +54,53 @@ func (f *Flow) Authorize(id string) error {
 	}
 	authData := &blecommands.AuthorizationData{
 		IdType: 0x00,
-		Id:     ctx.AppId,
+		Id:     f.authCtx.AppId,
 		Name:   fmt.Sprintf("Nuki CLI (%s)", hostname),
 		Nonce:  GetNonce32(),
 	}
 	// at this point, the payload will not contain the authenticator as it has 0 length
-	authenticator = ctx.GetMessageAuthenticator(authData.GetPayload(), challenge)
+	authenticator = f.authCtx.GetMessageAuthenticator(authData.GetPayload(), challenge)
 	// after the next line the payload contains the authenticator
 	authData.Authenticator = authenticator
 
-	msg = h.ToMessage(authData)
-	res, err = h.FromDeviceResponse(device.WritePairing(msg))
+	msg = f.handler.ToMessage(authData)
+	res, err = f.handler.FromDeviceResponse(f.device.WritePairing(msg))
 	if err != nil {
 		return fmt.Errorf("failed to send authorization data: %w", err)
 	}
 	authId := res.(*blecommands.AuthorizationID)
-	ctx.AuthId = authId.AuthId
-	slog.Debug("Received authorization data", "authId", ctx.AuthId, "nonceK", authId.Nonce)
+	f.authCtx.AuthId = authId.AuthId
+	slog.Debug("Received authorization data", "authId", f.authCtx.AuthId, "nonceK", authId.Nonce)
 
-	authenticator = ctx.GetMessageAuthenticator(ctx.AuthId, authId.Nonce)
-	msg = h.ToMessage(&blecommands.AuthorizationIDConfirmation{Authenticator: authenticator, AuthId: ctx.AuthId})
-	res, err = h.FromDeviceResponse(device.WritePairing(msg))
+	authenticator = f.authCtx.GetMessageAuthenticator(f.authCtx.AuthId, authId.Nonce)
+	msg = f.handler.ToMessage(&blecommands.AuthorizationIDConfirmation{Authenticator: authenticator, AuthId: f.authCtx.AuthId})
+	res, err = f.handler.FromDeviceResponse(f.device.WritePairing(msg))
 	if err != nil {
 		return fmt.Errorf("failed to send authorization ID confirmation: %w", err)
 	}
 	status := res.(*blecommands.Status).Status
 	slog.Info("Pairing complete", "status", status)
-	ctx.Store(id)
+
+	f.device.DiscoverKeyturnerUsdio()
+	f.InitializeHandlerWithCrypto()
+	nonce, err := f.getChallenge()
+	if err != nil {
+		return fmt.Errorf("failed to get challenge from device: %w", err)
+	}
+
+	slog.Info("Reading config from smartlock")
+	cfg := &blecommands.RequestConfig{Nonce: nonce}
+	msg = f.handler.ToEncryptedMessage(cfg, GetNonce24())
+	res, err = f.handler.FromEncryptedDeviceResponse(f.device.WriteUsdio(msg))
+	if err != nil {
+		return fmt.Errorf("failed to get config from device: %w", err)
+	}
+	f.authCtx.Name = res.(*blecommands.Config).Name
+
+	f.authCtx.Store(id)
 
 	slog.Info("Disconnecting...")
-	device.Disconnect()
+	f.device.Disconnect()
 	return nil
 }
 
