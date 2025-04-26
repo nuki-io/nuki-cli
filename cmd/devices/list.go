@@ -21,9 +21,9 @@ var listCmd = &cobra.Command{
 		for k, v := range auths {
 			values := v.(map[string]interface{})
 
-			devices = append(devices, []string{k, values["appid"].(string), values["authid"].(string)})
+			devices = append(devices, []string{values["name"].(string), k, values["appid"].(string), values["authid"].(string)})
 		}
-		t := table.New().Rows(devices...).Headers("Device ID", "App ID", "Auth ID")
+		t := table.New().Rows(devices...).Headers("Name", "Device ID", "App ID", "Auth ID")
 		fmt.Println(t)
 	},
 }
