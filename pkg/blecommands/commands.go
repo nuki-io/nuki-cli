@@ -144,82 +144,6 @@ var cmdImplMap = map[CommandCode]func() Command{
 	// CommandSimpleLockAction:            func() Command { return Command(&SimpleLockAction{}) },
 }
 
-type UnencryptedCommand struct {
-	command CommandCode
-	payload []byte
-}
-
-func NewUnencryptedCommand(cmd CommandCode, payload []byte) UnencryptedCommand {
-	return UnencryptedCommand{
-		command: cmd,
-		payload: payload,
-	}
-}
-
-func NewUnencryptedRequestData(request CommandCode) UnencryptedCommand {
-	payload := make([]byte, 2)
-	binary.LittleEndian.PutUint16(payload, uint16(request))
-	return UnencryptedCommand{
-		command: CommandRequestData,
-		payload: payload,
-	}
-}
-
-func (c *UnencryptedCommand) ToMessage() []byte {
-	res := make([]byte, 2+len(c.payload))
-	binary.LittleEndian.PutUint16(res, uint16(c.command))
-	for i, x := range c.payload {
-		res[i+2] = x
-	}
-	res = binary.LittleEndian.AppendUint16(res, CRC(res))
-	return res
-}
-
-type EncryptedCommand struct {
-	crypto  Crypto
-	authId  []byte
-	command CommandCode
-	payload []byte
-}
-
-func NewEncryptedCommand(crypto Crypto, authId []byte, cmd CommandCode, payload []byte) EncryptedCommand {
-	return EncryptedCommand{
-		crypto:  crypto,
-		authId:  authId,
-		command: cmd,
-		payload: payload,
-	}
-}
-
-func NewEncryptedRequestData(crypto Crypto, authId []byte, request CommandCode) EncryptedCommand {
-	payload := make([]byte, 2)
-	binary.LittleEndian.PutUint16(payload, uint16(request))
-	return EncryptedCommand{
-		crypto:  crypto,
-		authId:  authId,
-		command: CommandRequestData,
-		payload: payload,
-	}
-}
-
-func (c *EncryptedCommand) ToMessage(nonce []byte) []byte {
-	// length = authId + command + payload length + CRC
-	pdata := make([]byte, 0, 4+2+len(c.payload)+2)
-	pdata = append(pdata, c.authId...)
-	pdata = binary.LittleEndian.AppendUint16(pdata, uint16(c.command))
-	pdata = append(pdata, c.payload...)
-	pdata = binary.LittleEndian.AppendUint16(pdata, CRC(pdata))
-
-	pdataEnc, _ := c.crypto.Encrypt(nonce, pdata)
-
-	// length = nonce + authId + encrypted message length
-	adata := make([]byte, 0, 24+4+2)
-	adata = append(adata, nonce...)
-	adata = append(adata, c.authId...)
-	adata = binary.LittleEndian.AppendUint16(adata, uint16(len(pdataEnc)))
-	return slices.Concat(adata, pdataEnc)
-}
-
 type Command interface {
 	FromMessage([]byte) error
 	GetCommandCode() CommandCode
@@ -431,7 +355,7 @@ type KeyturnerStates struct {
 	Trigger                        byte
 	CurrentTime                    time.Time
 	TimezoneOffset                 byte
-	CriticalBatterState            byte
+	CriticalBatteryState           byte
 	ConfigUpdateCount              byte
 	LockNGoTimer                   byte
 	LastLockAction                 byte
@@ -452,8 +376,8 @@ func (c *KeyturnerStates) GetCommandCode() CommandCode {
 	return CommandKeyturnerStates
 }
 func (c *KeyturnerStates) FromMessage(b []byte) error {
-	if len(b) != 27 {
-		return fmt.Errorf("keyturner states length must be exactly 32 bytes, got: %d", len(b))
+	if len(b) != 27 { // TODO: which one is the correct length?
+		return fmt.Errorf("keyturner states length must be exactly 27 bytes, got: %d", len(b))
 	}
 	c.NukiState = b[0]
 	c.LockState = b[1]
@@ -469,7 +393,7 @@ func (c *KeyturnerStates) FromMessage(b []byte) error {
 		time.UTC,
 	)
 	c.TimezoneOffset = b[10]
-	c.CriticalBatterState = b[11]
+	c.CriticalBatteryState = b[11]
 	c.ConfigUpdateCount = b[12]
 	c.LockNGoTimer = b[13]
 	c.LastLockAction = b[14]
