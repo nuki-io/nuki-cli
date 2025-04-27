@@ -21,13 +21,18 @@ var lockCmd = &cobra.Command{
 	Short: "Lock the given (already paired) device",
 
 	Run: func(cmd *cobra.Command, args []string) {
+		// TODO: handle with cobra builtin functionality
+		if deviceId == "" {
+			c.Logger.Error("Please specify a device-id")
+			return
+		}
 		ble, err := nukible.NewNukiBle()
 		if err != nil {
 			c.Logger.Error("Failed to enable bluetooth device", "error", err.Error())
 			return
 		}
 		if runtime.GOOS == "linux" {
-			err = ble.ScanForDevice(args[0], 10*time.Second)
+			err = ble.ScanForDevice(deviceId, 10*time.Second)
 			if err != nil {
 				c.Logger.Error("Failed to scan", "error", err.Error())
 				return
@@ -35,8 +40,8 @@ var lockCmd = &cobra.Command{
 		}
 		flow := bleflows.NewFlow(ble)
 
-		action, _ := strconv.Atoi(args[1])
-		err = flow.PerformLockOperation(args[0], blecommands.Action(action))
+		action, _ := strconv.Atoi(args[0])
+		err = flow.PerformLockOperation(deviceId, blecommands.Action(action))
 		if err != nil {
 			c.Logger.Error("Failed to perform lock operation", "error", err.Error(), "action", action)
 			return
@@ -46,5 +51,4 @@ var lockCmd = &cobra.Command{
 
 func init() {
 	devicesCmd.AddCommand(lockCmd)
-
 }
