@@ -15,9 +15,9 @@ import (
 )
 
 // lockCmd represents the lock command
-var lockCmd = &cobra.Command{
-	Use:     "lock",
-	Short:   "Lock a device via Bluetooth",
+var unlockCmd = &cobra.Command{
+	Use:     "unlock",
+	Short:   "Unlock a device via Bluetooth",
 	PreRunE: mustDeviceId,
 	Run: func(cmd *cobra.Command, args []string) {
 		ble, err := nukible.NewNukiBle()
@@ -34,14 +34,14 @@ var lockCmd = &cobra.Command{
 		}
 		flow := bleflows.NewFlow(ble)
 
-		err = flow.PerformLockOperation(deviceId, blecommands.Lock)
+		err = flow.PerformLockOperation(deviceId, blecommands.Unlock)
 		if err != nil {
-			c.Logger.Error("Failed to perform lock operation", "error", err.Error())
+			c.Logger.Error("Failed to perform unlock operation", "error", err.Error())
 			return
 		}
 	},
 }
 
 func init() {
-	devicesCmd.AddCommand(lockCmd)
+	devicesCmd.AddCommand(unlockCmd)
 }
