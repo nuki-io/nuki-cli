@@ -16,10 +16,10 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all authorized devices",
 	Run: func(cmd *cobra.Command, args []string) {
-		auths := viper.Get("authorizations").(map[string]interface{})
+		auths := viper.Get("authorizations").(map[string]any)
 		devices := make([][]string, 0, len(auths))
 		for k, v := range auths {
-			values := v.(map[string]interface{})
+			values := v.(map[string]any)
 
 			devices = append(devices, []string{values["name"].(string), k, values["appid"].(string), values["authid"].(string)})
 		}

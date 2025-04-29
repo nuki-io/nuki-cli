@@ -15,14 +15,10 @@ import (
 
 // configCmd represents the config command
 var configCmd = &cobra.Command{
-	Use:   "config",
-	Short: "Retrieves and display the configuration of the device",
+	Use:     "config",
+	Short:   "Retrieves and display the configuration of the device",
+	PreRunE: mustDeviceId,
 	Run: func(cmd *cobra.Command, args []string) {
-		// TODO: handle with cobra builtin functionality
-		if deviceId == "" {
-			c.Logger.Error("Please specify a device-id")
-			return
-		}
 		ble, err := nukible.NewNukiBle()
 		if err != nil {
 			c.Logger.Error("Failed to enable bluetooth device", "error", err.Error())

@@ -17,15 +17,10 @@ import (
 
 // lockCmd represents the lock command
 var lockCmd = &cobra.Command{
-	Use:   "lock",
-	Short: "Lock the given (already paired) device",
-
+	Use:     "lock",
+	Short:   "Lock the given (already paired) device",
+	PreRunE: mustDeviceId,
 	Run: func(cmd *cobra.Command, args []string) {
-		// TODO: handle with cobra builtin functionality
-		if deviceId == "" {
-			c.Logger.Error("Please specify a device-id")
-			return
-		}
 		ble, err := nukible.NewNukiBle()
 		if err != nil {
 			c.Logger.Error("Failed to enable bluetooth device", "error", err.Error())

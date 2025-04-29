@@ -4,6 +4,8 @@ Copyright © 2025 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.nuki.io/nuki/nukictl/cmd"
@@ -33,4 +35,12 @@ func preRun(cmd *cobra.Command, args []string) {
 	}
 	// TODO: The following "should" work. Check why it doesn't.
 	// viper.BindPFlag("activeContext", cmd.PersistentFlags().Lookup("device-id"))
+}
+
+func mustDeviceId(cmd *cobra.Command, args []string) error {
+	if deviceId == "" {
+		return fmt.Errorf("either --device-id flag must be set or a device ID must set with set-context")
+	}
+	return nil
+
 }
