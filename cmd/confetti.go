@@ -14,7 +14,8 @@ import (
 
 // confettiCmd represents the confetti command
 var confettiCmd = &cobra.Command{
-	Use: "confetti",
+	Use:    "confetti",
+	Hidden: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		p := tea.NewProgram(confetti.InitialModel(), tea.WithAltScreen())
 		_, err := p.Run()
