@@ -431,8 +431,8 @@ func (c *KeyturnerStates) GetCommandCode() CommandCode {
 	return CommandKeyturnerStates
 }
 func (c *KeyturnerStates) FromMessage(b []byte) error {
-	if len(b) != 27 { // TODO: which one is the correct length?
-		return fmt.Errorf("keyturner states length must be exactly 27 bytes, got: %d", len(b))
+	if len(b) < 26 && len(b) > 27 { // TODO: which one is the correct length?
+		return fmt.Errorf("keyturner states length must be between 26 and 27 bytes, got: %d", len(b))
 	}
 	c.NukiState = b[0]
 	c.LockState = b[1]
@@ -508,7 +508,7 @@ func (c *Config) GetTimezoneLocation() *time.Location {
 	return tz
 }
 func (c *Config) FromMessage(b []byte) error {
-	if len(b) < 78 {
+	if len(b) < 76 {
 		return fmt.Errorf("invalid Config message length")
 	}
 
@@ -551,9 +551,12 @@ func (c *Config) FromMessage(b []byte) error {
 	// timezoneID is set above, next to the current time
 	c.DeviceType = b[74]
 	c.Capabilities = b[75]
-	c.HasKeypad2 = byteToBool(b[76])
-	c.MatterStatus = b[77]
-
+	if len(b) > 76 { // MatterStatus is optional? TODO: verify
+		c.HasKeypad2 = byteToBool(b[76])
+	}
+	if len(b) > 77 { // MatterStatus is optional? TODO: verify
+		c.MatterStatus = b[77]
+	}
 	return nil
 }
 
