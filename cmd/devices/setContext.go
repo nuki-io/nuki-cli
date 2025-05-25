@@ -4,9 +4,9 @@ Copyright © 2025 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	c "github.com/nuki-io/nuki-cli/cmd"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	c "go.nuki.io/nuki/nukictl/cmd"
 )
 
 // setContextCmd represents the setContext command

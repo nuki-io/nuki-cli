@@ -6,10 +6,10 @@ package cmd
 import (
 	"time"
 
+	c "github.com/nuki-io/nuki-cli/cmd"
+	"github.com/nuki-io/nuki-cli/pkg/bleflows"
+	"github.com/nuki-io/nuki-cli/pkg/nukible"
 	"github.com/spf13/cobra"
-	c "go.nuki.io/nuki/nukictl/cmd"
-	"go.nuki.io/nuki/nukictl/pkg/bleflows"
-	"go.nuki.io/nuki/nukictl/pkg/nukible"
 )
 
 // authorizeCmd represents the authorize command

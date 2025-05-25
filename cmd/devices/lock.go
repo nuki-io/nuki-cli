@@ -7,11 +7,11 @@ import (
 	"runtime"
 	"time"
 
+	c "github.com/nuki-io/nuki-cli/cmd"
+	"github.com/nuki-io/nuki-cli/pkg/blecommands"
+	"github.com/nuki-io/nuki-cli/pkg/bleflows"
+	"github.com/nuki-io/nuki-cli/pkg/nukible"
 	"github.com/spf13/cobra"
-	c "go.nuki.io/nuki/nukictl/cmd"
-	"go.nuki.io/nuki/nukictl/pkg/blecommands"
-	"go.nuki.io/nuki/nukictl/pkg/bleflows"
-	"go.nuki.io/nuki/nukictl/pkg/nukible"
 )
 
 // lockCmd represents the lock command

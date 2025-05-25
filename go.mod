@@ -1,4 +1,4 @@
-module go.nuki.io/nuki/nukictl
+module github.com/nuki-io/nuki-cli
 
 go 1.23.0
 
@@ -6,6 +6,7 @@ toolchain go1.23.8
 
 require (
 	github.com/charmbracelet/bubbletea v0.22.2-0.20221016150627-cbe309d6241c
+	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/maaslalani/confetty v0.0.0-20221105190856-6c6f1b5b605f
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
@@ -18,7 +19,6 @@ require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/charmbracelet/colorprofile v0.2.3-0.20250311203215-f60798e515dc // indirect
 	github.com/charmbracelet/harmonica v0.2.0 // indirect
-	github.com/charmbracelet/lipgloss v1.1.0 // indirect
 	github.com/charmbracelet/x/ansi v0.8.0 // indirect
 	github.com/charmbracelet/x/cellbuf v0.0.13-0.20250311204145-2c3ea96c31dd // indirect
 	github.com/charmbracelet/x/term v0.2.1 // indirect

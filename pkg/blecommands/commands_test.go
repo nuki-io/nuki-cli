@@ -3,8 +3,8 @@ package blecommands_test
 import (
 	"testing"
 
+	"github.com/nuki-io/nuki-cli/pkg/blecommands"
 	"github.com/stretchr/testify/require"
-	"go.nuki.io/nuki/nukictl/pkg/blecommands"
 )
 
 func TestRequestPublicKeyToMessage(t *testing.T) {

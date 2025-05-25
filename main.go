@@ -7,9 +7,9 @@ import (
 	"log/slog"
 	"os"
 
-	"go.nuki.io/nuki/nukictl/cmd"
-	_ "go.nuki.io/nuki/nukictl/cmd/devices"
-	logger "go.nuki.io/nuki/nukictl/internal"
+	"github.com/nuki-io/nuki-cli/cmd"
+	_ "github.com/nuki-io/nuki-cli/cmd/devices"
+	logger "github.com/nuki-io/nuki-cli/internal"
 )
 
 func main() {

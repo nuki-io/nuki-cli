@@ -6,9 +6,9 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/nuki-io/nuki-cli/cmd"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"go.nuki.io/nuki/nukictl/cmd"
 )
 
 var (

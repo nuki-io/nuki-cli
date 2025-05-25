@@ -3,7 +3,7 @@ package bleflows
 import (
 	"fmt"
 
-	"go.nuki.io/nuki/nukictl/pkg/blecommands"
+	"github.com/nuki-io/nuki-cli/pkg/blecommands"
 )
 
 func (f *Flow) GetConfig(id string) (*blecommands.Config, error) {

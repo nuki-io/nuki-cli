@@ -3,9 +3,9 @@ package cmd
 import (
 	"time"
 
+	c "github.com/nuki-io/nuki-cli/cmd"
+	"github.com/nuki-io/nuki-cli/pkg/nukible"
 	"github.com/spf13/cobra"
-	c "go.nuki.io/nuki/nukictl/cmd"
-	"go.nuki.io/nuki/nukictl/pkg/nukible"
 )
 
 // scanCmd represents the scan command

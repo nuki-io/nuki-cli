@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"slices"
 
-	"go.nuki.io/nuki/nukictl/pkg/blecommands"
+	"github.com/nuki-io/nuki-cli/pkg/blecommands"
 )
 
 func (f *Flow) PerformLockOperation(id string, action blecommands.Action) error {

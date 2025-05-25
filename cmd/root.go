@@ -8,9 +8,9 @@ import (
 	"os"
 	"path"
 
+	"github.com/nuki-io/nuki-cli/internal"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"go.nuki.io/nuki/nukictl/internal"
 )
 
 var (

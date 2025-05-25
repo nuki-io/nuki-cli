@@ -3,8 +3,8 @@ package bleflows
 import (
 	"fmt"
 
-	"go.nuki.io/nuki/nukictl/pkg/blecommands"
-	"go.nuki.io/nuki/nukictl/pkg/nukible"
+	"github.com/nuki-io/nuki-cli/pkg/blecommands"
+	"github.com/nuki-io/nuki-cli/pkg/nukible"
 )
 
 type Flow struct {

@@ -4,8 +4,8 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/nuki-io/nuki-cli/pkg/bleflows"
 	"github.com/stretchr/testify/require"
-	"go.nuki.io/nuki/nukictl/pkg/bleflows"
 )
 
 var (

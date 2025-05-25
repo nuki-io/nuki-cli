@@ -7,10 +7,10 @@ import (
 	"fmt"
 
 	"github.com/charmbracelet/lipgloss/table"
+	c "github.com/nuki-io/nuki-cli/cmd"
+	"github.com/nuki-io/nuki-cli/pkg/bleflows"
+	"github.com/nuki-io/nuki-cli/pkg/nukible"
 	"github.com/spf13/cobra"
-	c "go.nuki.io/nuki/nukictl/cmd"
-	"go.nuki.io/nuki/nukictl/pkg/bleflows"
-	"go.nuki.io/nuki/nukictl/pkg/nukible"
 )
 
 // configCmd represents the config command

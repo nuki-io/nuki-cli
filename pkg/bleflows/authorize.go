@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"os"
 
-	"go.nuki.io/nuki/nukictl/pkg/blecommands"
+	"github.com/nuki-io/nuki-cli/pkg/blecommands"
 )
 
 func (f *Flow) Authorize(id string) error {
