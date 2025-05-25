@@ -91,6 +91,24 @@ const (
 	StatusAccepted StatusCode = 0x01
 )
 
+//go:generate stringer -type=LockState
+type LockState uint8
+
+const (
+	LockStateUncalibrated    LockState = 0x00
+	LockStateLocked          LockState = 0x01
+	LockStateUnlocking       LockState = 0x02
+	LockStateUnlocked        LockState = 0x03
+	LockStateLocking         LockState = 0x04
+	LockStateUnlatched       LockState = 0x05
+	LockStateUnlockedLockNGo LockState = 0x06
+	LockStateUnlatching      LockState = 0x07
+	LockStateCalibration     LockState = 0xFC
+	LockStateBootRun         LockState = 0xFD
+	LockStateMotorBlocked    LockState = 0xFE
+	LockStateUndefined       LockState = 0xFF
+)
+
 var cmdImplMap = map[CommandCode]func() Command{
 	CommandRequestData: func() Command { return Command(&RequestData{}) },
 	CommandPublicKey:   func() Command { return Command(&PublicKey{}) },
@@ -406,7 +424,7 @@ func (c *LockAction) GetPayload() []byte {
 
 type KeyturnerStates struct {
 	NukiState                      byte
-	LockState                      byte
+	LockState                      LockState
 	Trigger                        byte
 	CurrentTime                    time.Time
 	TimezoneOffset                 byte
@@ -435,7 +453,7 @@ func (c *KeyturnerStates) FromMessage(b []byte) error {
 		return fmt.Errorf("keyturner states length must be between 26 and 27 bytes, got: %d", len(b))
 	}
 	c.NukiState = b[0]
-	c.LockState = b[1]
+	c.LockState = LockState(b[1])
 	c.Trigger = b[2]
 	c.CurrentTime = time.Date(
 		int(binary.LittleEndian.Uint16(b[3:5])),
