@@ -12,15 +12,37 @@ type Flow struct {
 	handler *blecommands.BleHandler
 	device  *nukible.Device
 	authCtx *AuthorizeContext
+	id      string
 }
 
-func NewFlow(ble *nukible.NukiBle) *Flow {
-	return &Flow{
+// NewAuthenticatedFlow creates a new Flow instance for a Nuki device that was already paired.
+func NewAuthenticatedFlow(ble *nukible.NukiBle, id string) *Flow {
+	f := &Flow{
 		ble: ble,
+		id:  id,
 	}
+	f.loadAuthContext(id)
+	f.connect(id)
+	f.device.DiscoverKeyturnerUsdio()
+	f.initializeHandlerWithCrypto()
+
+	return f
 }
 
-func (f *Flow) Connect(id string) error {
+// NewAuthenticatedFlow creates a new Flow instance for a Nuki device that was already paired.
+func NewUnauthenticatedFlow(ble *nukible.NukiBle, id string) *Flow {
+	f := &Flow{
+		ble: ble,
+		id:  id,
+	}
+	f.connect(id)
+	f.device.DiscoverPairing()
+	f.initializeHandler()
+
+	return f
+}
+
+func (f *Flow) connect(id string) error {
 	addr, ok := f.ble.GetDeviceAddress(id)
 	if !ok {
 		return fmt.Errorf("requested device with MAC %s was not discovered", id)
@@ -33,21 +55,21 @@ func (f *Flow) Connect(id string) error {
 	f.device = device
 	return nil
 }
-func (f *Flow) LoadAuthContext(id string) {
+func (f *Flow) loadAuthContext(id string) error {
 	f.authCtx = &AuthorizeContext{}
 	err := f.authCtx.Load(id)
 	if err != nil {
-		panic(fmt.Errorf("device is not paired yet. %s", err.Error()))
+		return fmt.Errorf("device is not paired yet. %s", err.Error())
 	}
+	return nil
 }
-func (f *Flow) InitializeHandler() {
+func (f *Flow) initializeHandler() {
 	f.handler = blecommands.NewBleHandler(nil, nil)
 }
-func (f *Flow) InitializeHandlerWithCrypto() {
+func (f *Flow) initializeHandlerWithCrypto() {
 	crypto := blecommands.NewCrypto(f.authCtx.SharedKey)
 	f.handler = blecommands.NewBleHandler(crypto, f.authCtx.AuthId)
 }
-
 func (f *Flow) getChallenge() ([]byte, error) {
 	msg := f.handler.ToEncryptedMessage(&blecommands.RequestData{CommandIdentifier: blecommands.CommandChallenge}, GetNonce24())
 	deviceRes := f.device.WriteUsdio(msg)
@@ -56,4 +78,12 @@ func (f *Flow) getChallenge() ([]byte, error) {
 		return nil, fmt.Errorf("failed to get challenge from device: %w", err)
 	}
 	return res.(*blecommands.Challenge).Nonce, nil
+}
+func (f *Flow) DisconnectDevice() error {
+	if f.device == nil {
+		return fmt.Errorf("no device connected")
+	}
+	f.device.Disconnect()
+	f.device = nil
+	return nil
 }

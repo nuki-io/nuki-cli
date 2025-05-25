@@ -8,12 +8,7 @@ import (
 	"github.com/nuki-io/nuki-cli/pkg/blecommands"
 )
 
-func (f *Flow) PerformLockOperation(id string, action blecommands.Action) error {
-	f.LoadAuthContext(id)
-	f.Connect(id)
-	f.device.DiscoverKeyturnerUsdio()
-	f.InitializeHandlerWithCrypto()
-
+func (f *Flow) PerformLockOperation(action blecommands.Action) error {
 	nonce, err := f.getChallenge()
 	if err != nil {
 		return fmt.Errorf("failed to get challenge from device: %w", err)
@@ -27,7 +22,6 @@ func (f *Flow) PerformLockOperation(id string, action blecommands.Action) error 
 	msg := f.handler.ToEncryptedMessage(lock, GetNonce24())
 	f.device.WriteUsdioWithCallback(msg, f.onLockResponse)
 
-	f.device.Disconnect()
 	return nil
 }
 

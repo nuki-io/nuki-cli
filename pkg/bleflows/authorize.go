@@ -9,11 +9,7 @@ import (
 	"github.com/nuki-io/nuki-cli/pkg/blecommands"
 )
 
-func (f *Flow) Authorize(id string) error {
-	f.Connect(id)
-	f.device.DiscoverPairing()
-	f.InitializeHandler()
-
+func (f *Flow) Authorize() error {
 	f.authCtx = NewAuthorizeContext()
 	slog.Info("Requesting public key from smartlock")
 	msg := f.handler.ToMessage(&blecommands.RequestData{CommandIdentifier: blecommands.CommandPublicKey})
@@ -82,7 +78,7 @@ func (f *Flow) Authorize(id string) error {
 	slog.Info("Pairing complete", "status", status)
 
 	f.device.DiscoverKeyturnerUsdio()
-	f.InitializeHandlerWithCrypto()
+	f.initializeHandlerWithCrypto()
 	nonce, err := f.getChallenge()
 	if err != nil {
 		return fmt.Errorf("failed to get challenge from device: %w", err)
@@ -96,11 +92,8 @@ func (f *Flow) Authorize(id string) error {
 		return fmt.Errorf("failed to get config from device: %w", err)
 	}
 	f.authCtx.Name = res.(*blecommands.Config).Name
+	f.authCtx.Store(f.id)
 
-	f.authCtx.Store(id)
-
-	slog.Info("Disconnecting...")
-	f.device.Disconnect()
 	return nil
 }
 

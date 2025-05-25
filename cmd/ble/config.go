@@ -21,9 +21,11 @@ var configCmd = &cobra.Command{
 			c.Logger.Error("Failed to enable bluetooth device", "error", err.Error())
 			return
 		}
-		flow := bleflows.NewFlow(ble)
+		flow := bleflows.NewAuthenticatedFlow(ble, deviceId)
+		defer flow.DisconnectDevice()
 
-		cfg, err := flow.GetConfig(deviceId)
+		cfg, err := flow.GetConfig()
+
 		if err != nil {
 			c.Logger.Error("Failed to read config", "error", err.Error())
 			return

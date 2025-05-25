@@ -25,9 +25,10 @@ var authorizeCmd = &cobra.Command{
 			c.Logger.Error("Failed to scan", "error", err.Error())
 			return
 		}
-		flow := bleflows.NewFlow(ble)
+		flow := bleflows.NewAuthenticatedFlow(ble, deviceId)
+		defer flow.DisconnectDevice()
 
-		err = flow.Authorize(deviceId)
+		err = flow.Authorize()
 		if err != nil {
 			c.Logger.Error("Failed to authorize", "error", err.Error())
 			return

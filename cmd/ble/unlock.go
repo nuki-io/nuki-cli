@@ -29,9 +29,10 @@ var unlockCmd = &cobra.Command{
 				return
 			}
 		}
-		flow := bleflows.NewFlow(ble)
+		flow := bleflows.NewAuthenticatedFlow(ble, deviceId)
+		defer flow.DisconnectDevice()
+		err = flow.PerformLockOperation(blecommands.Unlock)
 
-		err = flow.PerformLockOperation(deviceId, blecommands.Unlock)
 		if err != nil {
 			c.Logger.Error("Failed to perform unlock operation", "error", err.Error())
 			return
