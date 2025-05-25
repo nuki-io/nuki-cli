@@ -1,6 +1,3 @@
-/*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -15,18 +12,18 @@ var (
 	deviceId string
 )
 
-// devicesCmd represents the devices command
-var devicesCmd = &cobra.Command{
-	Use:              "devices",
+// bleCmd represents the bleCmd command
+var bleCmd = &cobra.Command{
+	Use:              "ble",
 	Short:            "Command that interacts with devices through BLE.",
 	Long:             ``,
 	PersistentPreRun: preRun,
 }
 
 func init() {
-	cmd.RootCmd.AddCommand(devicesCmd)
-	devicesCmd.PersistentFlags().StringVarP(&deviceId, "device-id", "d", "", "The device to use. If not set, the device set by set-context command is used. This is ignored for some commands.")
-	// viper.BindPFlag("activeContext", devicesCmd.PersistentFlags().Lookup("device-id"))
+	cmd.RootCmd.AddCommand(bleCmd)
+	bleCmd.PersistentFlags().StringVarP(&deviceId, "device-id", "d", "", "The device to use. If not set, the device set by set-context command is used. This is ignored for some commands.")
+	// viper.BindPFlag("activeContext", bleCmd.PersistentFlags().Lookup("device-id"))
 }
 
 func preRun(cmd *cobra.Command, args []string) {

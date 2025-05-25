@@ -28,5 +28,5 @@ var scanCmd = &cobra.Command{
 }
 
 func init() {
-	devicesCmd.AddCommand(scanCmd)
+	bleCmd.AddCommand(scanCmd)
 }

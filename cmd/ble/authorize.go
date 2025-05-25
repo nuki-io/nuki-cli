@@ -1,6 +1,3 @@
-/*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -39,5 +36,5 @@ var authorizeCmd = &cobra.Command{
 }
 
 func init() {
-	devicesCmd.AddCommand(authorizeCmd)
+	bleCmd.AddCommand(authorizeCmd)
 }

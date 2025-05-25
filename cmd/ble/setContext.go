@@ -1,6 +1,3 @@
-/*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -30,5 +27,5 @@ The device-id is stored in the config file and used for all commands that requir
 }
 
 func init() {
-	devicesCmd.AddCommand(setContextCmd)
+	bleCmd.AddCommand(setContextCmd)
 }

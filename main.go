@@ -8,14 +8,14 @@ import (
 	"os"
 
 	"github.com/nuki-io/nuki-cli/cmd"
-	_ "github.com/nuki-io/nuki-cli/cmd/devices"
-	logger "github.com/nuki-io/nuki-cli/internal"
+	_ "github.com/nuki-io/nuki-cli/cmd/ble"
+	"github.com/nuki-io/nuki-cli/internal"
 )
 
 func main() {
 	l := &slog.LevelVar{}
 	l.Set(slog.LevelInfo)
-	logger := slog.New(logger.NewLogger(l, os.Stderr))
+	logger := slog.New(internal.NewLogger(l, os.Stderr))
 	slog.SetDefault(logger)
 
 	cmd.Execute(l)
