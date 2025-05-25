@@ -13,7 +13,7 @@ var setContextCmd = &cobra.Command{
 	Long: `Instead of always specifying the device-id, you can set the active device with this command.
 This is useful for commands that require a device-id, but you don't want to specify it every time.
 The device-id is stored in the config file and used for all commands that require a device-id.`,
-	Example: `nukictl devices set-context 1234567890abcdef`,
+	Example: `nukictl ble set-context 1234567890abcdef`,
 	PreRunE: mustDeviceId,
 	Run: func(cmd *cobra.Command, args []string) {
 		viper.Set("activeContext", deviceId)

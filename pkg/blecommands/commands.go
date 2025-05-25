@@ -429,6 +429,7 @@ type KeyturnerStates struct {
 	CurrentTime                    time.Time
 	TimezoneOffset                 byte
 	CriticalBatteryState           byte
+	BatteryPercentage              int
 	ConfigUpdateCount              byte
 	LockNGoTimer                   byte
 	LastLockAction                 byte
@@ -467,6 +468,7 @@ func (c *KeyturnerStates) FromMessage(b []byte) error {
 	)
 	c.TimezoneOffset = b[10]
 	c.CriticalBatteryState = b[11]
+	c.BatteryPercentage = int(b[11]&0xFC) * 2
 	c.ConfigUpdateCount = b[12]
 	c.LockNGoTimer = b[13]
 	c.LastLockAction = b[14]

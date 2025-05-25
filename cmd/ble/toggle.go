@@ -18,9 +18,10 @@ var repeats int
 
 // toggleCmd represents the toggle command
 var toggleCmd = &cobra.Command{
-	Use:   "toggle",
-	Short: "Toggles the current lock state",
-	Long:  `Depending on the lock's current state, this command either locks or unlocks.`,
+	Use:     "toggle",
+	Short:   "Toggles the current lock state",
+	Long:    `Depending on the lock's current state, this command either locks or unlocks.`,
+	PreRunE: mustDeviceId,
 	Run: func(cmd *cobra.Command, args []string) {
 		ble, err := nukible.NewNukiBle()
 		if err != nil {
@@ -62,7 +63,6 @@ var toggleCmd = &cobra.Command{
 			c.Logger.Error("Failed to perform lock operation", "error", err.Error())
 			return
 		}
-
 	},
 }
 
