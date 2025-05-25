@@ -14,7 +14,7 @@ import (
 
 // listDevicesCmd represents the listDevices command
 var listDevicesCmd = &cobra.Command{
-	Use:     "listDevices",
+	Use:     "list-devices",
 	Short:   "List all devices registered in Nuki Web",
 	Aliases: []string{"ls"},
 	Run: func(cmd *cobra.Command, args []string) {

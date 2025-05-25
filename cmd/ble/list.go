@@ -10,8 +10,9 @@ import (
 
 // listCmd represents the list command
 var listCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List all authorized devices",
+	Use:     "list",
+	Aliases: []string{"ls"},
+	Short:   "List all authorized devices",
 	Run: func(cmd *cobra.Command, args []string) {
 		auths := viper.Get("authorizations").(map[string]any)
 		devices := make([][]string, 0, len(auths))

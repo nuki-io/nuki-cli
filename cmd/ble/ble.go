@@ -15,7 +15,7 @@ var (
 // bleCmd represents the bleCmd command
 var bleCmd = &cobra.Command{
 	Use:              "ble",
-	Short:            "Command that interacts with devices through BLE.",
+	Short:            "Command to interact with devices through BLE",
 	Long:             ``,
 	PersistentPreRun: preRun,
 }

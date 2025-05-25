@@ -9,6 +9,7 @@ import (
 
 	"github.com/nuki-io/nuki-cli/cmd"
 	_ "github.com/nuki-io/nuki-cli/cmd/ble"
+	_ "github.com/nuki-io/nuki-cli/cmd/devices"
 	_ "github.com/nuki-io/nuki-cli/cmd/web"
 	"github.com/nuki-io/nuki-cli/internal"
 )
