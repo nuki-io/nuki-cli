@@ -8,6 +8,7 @@ require (
 	github.com/charmbracelet/bubbletea v0.22.2-0.20221016150627-cbe309d6241c
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/maaslalani/confetty v0.0.0-20221105190856-6c6f1b5b605f
+	github.com/nuki-io/go-nuki v0.0.0-20250523222512-0a09ad3389d8
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.10.0
@@ -56,6 +57,7 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/exp v0.0.0-20230728194245-b0cb94b80691 // indirect
+	golang.org/x/oauth2 v0.25.0 // indirect
 	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/term v0.31.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
