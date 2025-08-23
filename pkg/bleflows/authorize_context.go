@@ -21,6 +21,7 @@ type AuthorizeContext struct {
 	SharedKey     []byte
 	AuthId        []byte
 	AppId         []byte
+	NukiId        uint32
 	Name          string
 }
 
@@ -32,6 +33,7 @@ func (ac *AuthorizeContext) toStorage() *authorizeContextStorage {
 		SharedKey:     fmt.Sprintf("%x", ac.SharedKey),
 		AuthId:        fmt.Sprintf("%x", ac.AuthId),
 		AppId:         fmt.Sprintf("%x", ac.AppId),
+		NukiId:        fmt.Sprintf("%X", ac.NukiId),
 		Name:          ac.Name,
 	}
 }
@@ -64,6 +66,7 @@ type authorizeContextStorage struct {
 	SharedKey     string
 	AuthId        string
 	AppId         string
+	NukiId        string
 	Name          string
 }
 

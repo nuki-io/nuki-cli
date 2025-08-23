@@ -91,8 +91,7 @@ func (f *Flow) Authorize() error {
 	if err != nil {
 		return fmt.Errorf("failed to get config from device: %w", err)
 	}
-	f.authCtx.Name = res.(*blecommands.Config).Name
-	f.authCtx.Store(f.id)
+	f.UpdateAuthCtxFromConfig(res.(*blecommands.Config))
 
 	return nil
 }

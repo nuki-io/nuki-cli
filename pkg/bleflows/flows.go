@@ -79,6 +79,13 @@ func (f *Flow) getChallenge() ([]byte, error) {
 	}
 	return res.(*blecommands.Challenge).Nonce, nil
 }
+
+func (f *Flow) UpdateAuthCtxFromConfig(cfg *blecommands.Config) {
+	f.authCtx.Name = cfg.Name
+	f.authCtx.NukiId = cfg.NukiID
+	f.authCtx.Store(f.id)
+}
+
 func (f *Flow) DisconnectDevice() error {
 	if f.device == nil {
 		return fmt.Errorf("no device connected")

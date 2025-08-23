@@ -60,6 +60,7 @@ var configCmd = &cobra.Command{
 			[]string{"Matter Status", fmt.Sprintf("%d", cfg.MatterStatus)},
 		)
 		fmt.Println(t)
+		flow.UpdateAuthCtxFromConfig(cfg)
 	},
 }
 
