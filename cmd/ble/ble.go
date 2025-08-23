@@ -27,7 +27,7 @@ func init() {
 }
 
 func preRun(cmd *cobra.Command, args []string) {
-	if viper.IsSet("activecontext") {
+	if deviceId == "" && viper.IsSet("activecontext") {
 		deviceId = viper.GetString("activecontext")
 	}
 	// TODO: The following "should" work. Check why it doesn't.
