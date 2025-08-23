@@ -23,12 +23,12 @@ var listDevicesCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		auths := viper.Get("authorizations").(map[string]any)
 		devices := make([][]string, 0, len(auths))
-		for k, v := range auths {
+		for _, v := range auths {
 			values := v.(map[string]any)
 
 			devices = append(devices, []string{
 				values["name"].(string),
-				k,
+				strings.ToUpper(values["nukiid"].(string)),
 				strings.ToUpper(values["appid"].(string)),
 				strings.ToUpper(values["authid"].(string)),
 				"BLE",
@@ -52,7 +52,7 @@ var listDevicesCmd = &cobra.Command{
 				})
 			}
 		}
-		t := table.New().Rows(devices...).Headers("Name", "Device ID", "App ID", "Auth ID", "Connection")
+		t := table.New().Rows(devices...).Headers("Name", "Nuki ID", "App ID", "Auth ID", "Connection")
 		fmt.Println(t)
 	},
 }
