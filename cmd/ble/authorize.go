@@ -34,7 +34,7 @@ var authorizeCmd = &cobra.Command{
 		}
 		defer flow.DisconnectDevice()
 
-		err = flow.Authorize()
+		err = flow.Authorize(pin)
 		if err != nil {
 			c.Logger.Error("Failed to authorize", "error", err.Error())
 			return
