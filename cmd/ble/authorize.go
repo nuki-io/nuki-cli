@@ -9,6 +9,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var pin string
+
 // authorizeCmd represents the authorize command
 var authorizeCmd = &cobra.Command{
 	Use:     "authorize",
@@ -42,4 +44,5 @@ var authorizeCmd = &cobra.Command{
 
 func init() {
 	bleCmd.AddCommand(authorizeCmd)
+	authorizeCmd.Flags().StringVarP(&pin, "pin", "p", "", "The PIN code to use for authorization.")
 }

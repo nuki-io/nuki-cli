@@ -9,8 +9,9 @@ import (
 	"github.com/nuki-io/nuki-cli/pkg/blecommands"
 )
 
-func (f *Flow) Authorize() error {
+func (f *Flow) Authorize(pin string) error {
 	f.authCtx = NewAuthorizeContext()
+	f.authCtx.Pin = pin
 	slog.Info("Requesting public key from smartlock")
 	msg := f.handler.ToMessage(&blecommands.RequestData{CommandIdentifier: blecommands.CommandPublicKey})
 	res, err := f.handler.FromDeviceResponse(f.device.WritePairing(msg))
@@ -106,8 +107,8 @@ func (f *Flow) authPre5G(res blecommands.Command) error {
 }
 
 func (f *Flow) auth5G(res blecommands.Command) error {
-	ai := res.(*blecommands.AuthorizationInfo)
-	slog.Info("AuthorizationInfo", "pinSet", ai.SecurityPinSet)
+	// TODO: if security pin is not set, should we also not send in the auth info?
+	_ = res.(*blecommands.AuthorizationInfo)
 
 	// temporarily set to fixed AuthID 0x7FFFFFFF
 	// see Nuki BLE Spec, Example for 5G Authorization

@@ -76,9 +76,10 @@ func (h *BleHandler) FromDeviceResponse(b []byte) (Command, error) {
 	}
 	cmd := cmdImpl()
 	cmd.FromMessage(payload)
-	if cmdCode == CommandErrorReport {
-		return cmd, fmt.Errorf("error report: %x", payload)
+	if e, ok := cmd.(*ErrorReport); ok {
+		return cmd, fmt.Errorf("%s, command: %s", e.Error, e.CommandIdentifier)
 	}
+
 	return cmd, nil
 }
 
