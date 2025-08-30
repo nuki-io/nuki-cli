@@ -23,6 +23,9 @@ func (n *Device) DiscoverServicesAndCharacteristics(services []bluetooth.UUID, c
 	}
 	n.services = s
 
+	if len(s) != 1 {
+		return fmt.Errorf("expected exactly one service, got %d", len(s))
+	}
 	c, err := s[0].DiscoverCharacteristics(chars)
 	if err != nil {
 		return err

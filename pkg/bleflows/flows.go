@@ -21,9 +21,18 @@ func NewAuthenticatedFlow(ble *nukible.NukiBle, id string) *Flow {
 		ble: ble,
 		id:  id,
 	}
-	f.loadAuthContext(id)
-	f.connect(id)
-	f.device.DiscoverKeyturnerUsdio()
+	err := f.loadAuthContext(id)
+	if err != nil {
+		return nil
+	}
+	err = f.connect(id)
+	if err != nil {
+		return nil
+	}
+	err = f.device.DiscoverKeyturnerUsdio()
+	if err != nil {
+		return nil
+	}
 	f.initializeHandlerWithCrypto()
 
 	return f
@@ -35,8 +44,14 @@ func NewUnauthenticatedFlow(ble *nukible.NukiBle, id string) *Flow {
 		ble: ble,
 		id:  id,
 	}
-	f.connect(id)
-	f.device.DiscoverPairing()
+	err := f.connect(id)
+	if err != nil {
+		return nil
+	}
+	err = f.device.DiscoverPairing()
+	if err != nil {
+		return nil
+	}
 	f.initializeHandler()
 
 	return f

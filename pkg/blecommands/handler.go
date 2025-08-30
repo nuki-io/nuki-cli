@@ -7,6 +7,8 @@ import (
 	"slices"
 )
 
+var authId5GPairing = []byte{0x7F, 0xFF, 0xFF, 0xFF}
+
 type BleHandler struct {
 	crypto Crypto
 	authId []byte
@@ -84,7 +86,7 @@ func (h *BleHandler) FromEncryptedDeviceResponse(b []byte) (Command, error) {
 	nonce := b[0:24]
 	authId := b[24:28]
 	// msgLen := b[28:30]
-	if !slices.Equal(authId, h.authId) {
+	if !slices.Equal(h.authId, authId5GPairing) && !slices.Equal(authId, h.authId) {
 		return nil, fmt.Errorf("authId mismatch: expected %x, got %x", h.authId, authId)
 	}
 
@@ -115,13 +117,13 @@ func (h *BleHandler) FromEncryptedDeviceResponse(b []byte) (Command, error) {
 		return nil, fmt.Errorf("unhandled response command code: %x, name: %s", int(cmdCode), cmdCode)
 	}
 	cmd := cmdImpl()
-	if cmdCode == CommandErrorReport {
-		return cmd, fmt.Errorf("error report: %x", payload)
+	if e, ok := cmd.(*ErrorReport); ok {
+		cmd.FromMessage(payload)
+		return cmd, fmt.Errorf("%s, command: %s", e.Error, e.CommandIdentifier)
 	}
 	err = cmd.FromMessage(payload)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse command: %w", err)
 	}
 	return cmd, nil
-
 }

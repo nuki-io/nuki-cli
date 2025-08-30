@@ -18,6 +18,7 @@ const (
 	CommandChallenge                   CommandCode = 0x0004
 	CommandAuthorizationAuthenticator  CommandCode = 0x0005
 	CommandAuthorizationData           CommandCode = 0x0006
+	CommandAuthorizationData5G         CommandCode = 0x0006
 	CommandAuthorizationID             CommandCode = 0x0007
 	CommandRemoveAuthorizationEntry    CommandCode = 0x0008
 	CommandRequestAuthorizationEntries CommandCode = 0x0009
@@ -160,7 +161,7 @@ var cmdImplMap = map[CommandCode]func() Command{
 	// CommandKeypadCode:                  func() Command { return Command(&KeypadCode{}) },
 	// CommandUpdateKeypadCode:            func() Command { return Command(&UpdateKeypadCode{}) },
 	// CommandRemoveKeypadCode:            func() Command { return Command(&RemoveKeypadCode{}) },
-	// CommandAuthorizationInfo:           func() Command { return Command(&AuthorizationInfo{}) },
+	CommandAuthorizationInfo: func() Command { return Command(&AuthorizationInfo{}) },
 	// CommandSimpleLockAction:            func() Command { return Command(&SimpleLockAction{}) },
 }
 var timezoneMap = map[uint16]string{
@@ -305,6 +306,32 @@ func (c *AuthorizationData) GetPayload() []byte {
 	)
 }
 
+var _ Command = &AuthorizationData5G{}
+
+type AuthorizationData5G struct {
+	Id          []byte
+	Name        string
+	SecurityPin Pin
+}
+
+func (a *AuthorizationData5G) FromMessage([]byte) error {
+	panic("not implemented; request only")
+}
+
+func (a *AuthorizationData5G) GetCommandCode() CommandCode {
+	return CommandAuthorizationData5G
+}
+
+func (a *AuthorizationData5G) GetPayload() []byte {
+	appName := [32]byte{}
+	copy(appName[:], a.Name)
+	return slices.Concat(
+		a.Id,
+		appName[:],
+		a.SecurityPin.GetPinBytes(),
+	)
+}
+
 type AuthorizationIDConfirmation struct {
 	Authenticator []byte
 	AuthId        []byte
@@ -338,6 +365,7 @@ func (c *Challenge) GetPayload() []byte {
 	return c.Nonce
 }
 
+// TODO: probably better to split it into 5G and pre-5G versions
 type AuthorizationID struct {
 	Authenticator []byte
 	AuthId        []byte
@@ -349,8 +377,14 @@ func (c *AuthorizationID) GetCommandCode() CommandCode {
 	return CommandAuthorizationID
 }
 func (c *AuthorizationID) FromMessage(b []byte) error {
-	if len(b) != 84 {
-		return fmt.Errorf("authorization ID length must be exactly 84 bytes, got: %d", len(b))
+	if len(b) != 84 && len(b) != 20 { // 20 bytes from 5G onwards
+		return fmt.Errorf("authorization ID length must be exactly 84 bytes (until 5G) or 20 bytes (from 5G onwards), got: %d", len(b))
+	}
+	if len(b) == 20 {
+		// 5G onwards
+		c.AuthId = b[:4]
+		c.Uuid = b[4:20]
+		return nil
 	}
 	c.Authenticator = b[:32]
 	c.AuthId = b[32:36]
@@ -381,7 +415,8 @@ func (c *Status) GetPayload() []byte {
 }
 
 type ErrorReport struct {
-	ErrorCode         int8
+	ErrorCode         byte
+	Error             string
 	CommandIdentifier CommandCode
 }
 
@@ -392,7 +427,8 @@ func (c *ErrorReport) FromMessage(b []byte) error {
 	if len(b) != 3 {
 		return fmt.Errorf("error report length must be exactly 3 bytes, got: %d", len(b))
 	}
-	c.ErrorCode = int8(b[0])
+	c.ErrorCode = b[0]
+	c.Error = errorCodeNames[c.ErrorCode]
 	c.CommandIdentifier = CommandCode(binary.LittleEndian.Uint16(b[1:]))
 	return nil
 }

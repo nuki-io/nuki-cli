@@ -13,9 +13,10 @@ var (
 
 	KeyturnerInitializationService = baseUuid.Replace16BitComponent(0xe000)
 
-	KeyturnerPairingService            = baseUuid.Replace16BitComponent(0xe100)
-	KeyturnerPairingServiceUltra       = baseUuid.Replace16BitComponent(0xe300)
-	KeyturnerPairingGdioCharacteristic = baseUuid.Replace16BitComponent(0xe101)
+	KeyturnerPairingService                 = baseUuid.Replace16BitComponent(0xe100)
+	KeyturnerPairingServiceUltra            = baseUuid.Replace16BitComponent(0xe300)
+	KeyturnerPairingGdioCharacteristic      = baseUuid.Replace16BitComponent(0xe101)
+	KeyturnerPairingGdioCharacteristicUltra = baseUuid.Replace16BitComponent(0xe301)
 
 	KeyturnerService             = baseUuid.Replace16BitComponent(0xe200)
 	KeyturnerGdioCharacteristic  = baseUuid.Replace16BitComponent(0xe201)
