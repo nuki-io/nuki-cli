@@ -3,7 +3,6 @@ package bleflows
 import (
 	"fmt"
 	"log/slog"
-	"slices"
 
 	"github.com/nuki-io/nuki-cli/pkg/blecommands"
 )
@@ -34,7 +33,7 @@ func (f *Flow) onLockResponse(buf []byte, sem chan int) []byte {
 		return buf
 	}
 	slog.Info("Received lock action response", "cmd", res.GetCommandCode(), "payload", res)
-	if res.GetCommandCode() == blecommands.CommandStatus && slices.Equal(res.GetPayload(), []byte{0x00}) {
+	if s, ok := res.(*blecommands.Status); ok && s.Status == blecommands.StatusComplete {
 		<-sem
 	}
 	return buf
