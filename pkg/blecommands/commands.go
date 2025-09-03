@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"slices"
+	"strings"
 	"time"
 )
 
@@ -140,9 +141,9 @@ var cmdImplMap = map[CommandCode]func() Command{
 	// CommandUpdateTime:                  func() Command { return Command(&UpdateTime{}) },
 	// CommandUpdateAuthorizationEntry:    func() Command { return Command(&UpdateAuthorizationEntry{}) },
 	// CommandAuthorizationEntryCount:     func() Command { return Command(&AuthorizationEntryCount{}) },
-	// CommandRequestLogEntries:           func() Command { return Command(&RequestLogEntries{}) },
-	// CommandLogEntry:                    func() Command { return Command(&LogEntry{}) },
-	// CommandLogEntryCount:               func() Command { return Command(&LogEntryCount{}) },
+	CommandRequestLogEntries: func() Command { return Command(&RequestLogEntries{}) },
+	CommandLogEntry:          func() Command { return Command(&LogEntry{}) },
+	// CommandLogEntryCount:     func() Command { return Command(&LogEntryCount{}) },
 	// CommandEnableLogging:               func() Command { return Command(&EnableLogging{}) },
 	// CommandSetAdvancedConfig:           func() Command { return Command(&SetAdvancedConfig{}) },
 	// CommandRequestAdvancedConfig:       func() Command { return Command(&RequestAdvancedConfig{}) },
@@ -279,10 +280,18 @@ func (c *AuthorizationAuthenticator) GetPayload() []byte {
 	return c.Authenticator
 }
 
+type AuthorizationType uint8
+
+const (
+	AuthorizationTypeApp    AuthorizationType = 0x00 // App
+	AuthorizationTypeBridge AuthorizationType = 0x01 // Bridge
+	AuthorizationTypeFob    AuthorizationType = 0x02 // Fob
+	AuthorizationTypeKeypad AuthorizationType = 0x03 // Keypad
+)
+
 type AuthorizationData struct {
-	// TODO: should use more concrete types
 	Authenticator []byte
-	IdType        uint8 // 0x00 = App, 0x01 = Bridge, 0x02 = Fob, 0x03 = Keypad
+	IdType        AuthorizationType
 	Id            []byte
 	Name          string
 	Nonce         []byte
@@ -299,7 +308,7 @@ func (c *AuthorizationData) GetPayload() []byte {
 	copy(appName[:], c.Name)
 	return slices.Concat(
 		c.Authenticator,
-		[]byte{c.IdType},
+		[]byte{byte(c.IdType)},
 		c.Id,
 		appName[:],
 		c.Nonce,
@@ -458,28 +467,236 @@ func (c *LockAction) GetPayload() []byte {
 	)
 }
 
+//go:generate stringer -type=NukiState
+type NukiState byte
+
+const (
+	NukiStateUninitialized   NukiState = 0x00
+	NukiStatePairingMode     NukiState = 0x01
+	NukiStateDoorMode        NukiState = 0x02
+	NukiStateMaintenanceMode NukiState = 0x04
+)
+
+//go:generate stringer -type=Trigger
+type Trigger byte
+
+const (
+	TriggerSystem    Trigger = 0x00 // via bluetooth command
+	TriggerManual    Trigger = 0x01 // by using a key from outside the door or rotating the wheel on the inside
+	TriggerButton    Trigger = 0x02 // by pressing the Smart Lock's button
+	TriggerAutomatic Trigger = 0x03 // executed automatically (e.g. at a specific time) by the Smart Lock
+	TriggerAutoLock  Trigger = 0x06 // auto lock of the Smart Lock
+)
+
+// KeyturnerStates holds the state information for the Smart Lock.
+type DoorSensorState byte
+
+const (
+	DoorSensorUnavailable  DoorSensorState = 0x00 // Not paired
+	DoorSensorClosed       DoorSensorState = 0x02
+	DoorSensorOpened       DoorSensorState = 0x03
+	DoorSensorUncalibrated DoorSensorState = 0x10
+	DoorSensorTampered     DoorSensorState = 0xF0
+	DoorSensorUnknown      DoorSensorState = 0xFF
+)
+
+type RemoteAccessStatus struct {
+	SSEUplinkAvailable       bool // Bit 0: SSE uplink available via BR/WiFi/Thread
+	BridgePaired             bool // Bit 1: Bridge paired
+	SSEConnectionViaWiFi     bool // Bit 2: SSE connection via WiFi
+	SSEConnectionEstablished bool // Bit 3: SSE connection established
+	SSEConnectionViaThread   bool // Bit 4: SSE connection via Thread
+	ThreadSSEUplinkEnabled   bool // Bit 5: Thread SSE uplink enabled (manual setting from user)
+	NAT64AvailableViaThread  bool // Bit 6: NAT64 available via Thread (potential SSE uplink)
+}
+
+func (r RemoteAccessStatus) String() string {
+	var vals []string
+	if r.SSEUplinkAvailable {
+		vals = append(vals, "SSE Uplink Available")
+	}
+	if r.BridgePaired {
+		vals = append(vals, "Bridge Paired")
+	}
+	if r.SSEConnectionViaWiFi {
+		vals = append(vals, "SSE Connection Via WiFi")
+	}
+	if r.SSEConnectionEstablished {
+		vals = append(vals, "SSE Connection Established")
+	}
+	if r.SSEConnectionViaThread {
+		vals = append(vals, "SSE Connection Via Thread")
+	}
+	if r.ThreadSSEUplinkEnabled {
+		vals = append(vals, "Thread SSE Uplink Enabled")
+	}
+	if r.NAT64AvailableViaThread {
+		vals = append(vals, "NAT64 Available Via Thread")
+	}
+	return strings.Join(vals, ", ")
+}
+
+func newRemoteAccessStatus(b byte) RemoteAccessStatus {
+	return RemoteAccessStatus{
+		SSEUplinkAvailable:       b&0x01 != 0,
+		BridgePaired:             b&0x02 != 0,
+		SSEConnectionViaWiFi:     b&0x04 != 0,
+		SSEConnectionEstablished: b&0x08 != 0,
+		SSEConnectionViaThread:   b&0x10 != 0,
+		ThreadSSEUplinkEnabled:   b&0x20 != 0,
+		NAT64AvailableViaThread:  b&0x40 != 0,
+	}
+}
+
+type AccessoryStatus struct {
+	KeypadSupported           bool // Bit 0: Feature supported by Keypad
+	KeypadBatteryCritical     bool // Bit 1: Keypad Battery State Critical
+	DoorSensorSupported       bool // Bit 2: Feature supported by Door Sensor
+	DoorSensorBatteryCritical bool // Bit 3: Door Sensor Battery State Critical
+}
+
+func newAccessoryStatus(b byte) AccessoryStatus {
+	return AccessoryStatus{
+		KeypadSupported:           b&0x01 != 0,
+		KeypadBatteryCritical:     b&0x02 != 0,
+		DoorSensorSupported:       b&0x04 != 0,
+		DoorSensorBatteryCritical: b&0x08 != 0,
+	}
+}
+
+type ConnectionStrengthStatus byte
+
+const (
+	ConnectionStrengthInvalid      ConnectionStrengthStatus = 0x00
+	ConnectionStrengthNotSupported ConnectionStrengthStatus = 0x01
+	ConnectionStrengthOK           ConnectionStrengthStatus = 0x02
+)
+
+type ConnectionStrength struct {
+	RSSI   int8
+	Status ConnectionStrengthStatus
+}
+
+func newConnectionStrength(b byte) ConnectionStrength {
+	switch b {
+	case 0x00:
+		return ConnectionStrength{RSSI: 0, Status: ConnectionStrengthInvalid}
+	case 0x01:
+		return ConnectionStrength{RSSI: 0, Status: ConnectionStrengthNotSupported}
+	default:
+		return ConnectionStrength{RSSI: int8(b), Status: ConnectionStrengthOK}
+	}
+}
+
+type WifiStatus byte
+
+const (
+	WifiDisabled     WifiStatus = 0x00
+	WifiDisconnected WifiStatus = 0x01
+	WifiConnecting   WifiStatus = 0x02
+	WifiConnected    WifiStatus = 0x03
+)
+
+type SseStatus byte
+
+const (
+	SseSuspended    SseStatus = 0x00
+	SseNotReachable SseStatus = 0x01
+	SseConnecting   SseStatus = 0x02
+	SseConnected    SseStatus = 0x03
+)
+
+type WifiConnectionStatus struct {
+	WifiStatus  WifiStatus // Bits 0-1: WiFi status
+	SseStatus   SseStatus  // Bits 2-3: SSE status
+	WifiQuality byte       // Bits 4-7: WiFi quality (0x00 - 0x0F)
+}
+
+func newWifiConnectionStatus(b byte) WifiConnectionStatus {
+	return WifiConnectionStatus{
+		WifiStatus:  WifiStatus(b & 0x03),
+		SseStatus:   SseStatus((b >> 2) & 0x03),
+		WifiQuality: (b >> 4) & 0x0F,
+	}
+}
+
+type MqttStatus byte
+
+const (
+	MqttDisabled     MqttStatus = 0x00
+	MqttDisconnected MqttStatus = 0x01
+	MqttConnecting   MqttStatus = 0x02
+	MqttConnected    MqttStatus = 0x03
+)
+
+type MqttUplink byte
+
+const (
+	MqttUplinkWiFi   MqttUplink = 0x00
+	MqttUplinkThread MqttUplink = 0x01
+)
+
+type MqttConnectionStatus struct {
+	MqttStatus MqttStatus
+	MqttUplink MqttUplink
+}
+
+func newMqttConnectionStatus(b byte) MqttConnectionStatus {
+	return MqttConnectionStatus{
+		MqttStatus: MqttStatus(b & 0x03),
+		MqttUplink: MqttUplink((b >> 2) & 0x01),
+	}
+}
+
+type ThreadStatus byte
+
+const (
+	ThreadStatusMatterDisabled ThreadStatus = 0x00
+	ThreadStatusDisconnected   ThreadStatus = 0x01
+	ThreadStatusConnecting     ThreadStatus = 0x02
+	ThreadStatusConnected      ThreadStatus = 0x03
+)
+
+type ThreadConnectionStatus struct {
+	ThreadStatus              ThreadStatus
+	SseStatus                 SseStatus
+	MatterCommissioningActive bool
+	WifiSuspended             bool
+}
+
+func newThreadConnectionStatus(b byte) ThreadConnectionStatus {
+	return ThreadConnectionStatus{
+		ThreadStatus:              ThreadStatus(b & 0x03),
+		SseStatus:                 SseStatus((b >> 2) & 0x03),
+		MatterCommissioningActive: b&0x10 != 0,
+		WifiSuspended:             b&0x20 != 0,
+	}
+}
+
 type KeyturnerStates struct {
-	NukiState                      byte
-	LockState                      LockState
-	Trigger                        byte
-	CurrentTime                    time.Time
-	TimezoneOffset                 byte
-	CriticalBatteryState           byte
-	BatteryPercentage              int
+	NukiState            NukiState
+	LockState            LockState
+	Trigger              Trigger
+	CurrentTime          time.Time
+	TimezoneOffset       int16
+	BatteryStateCritical bool
+	Charging             bool
+	BatteryPercentage    int
+
 	ConfigUpdateCount              byte
 	LockNGoTimer                   byte
-	LastLockAction                 byte
-	LastLockActionTrigger          byte
-	LastLockActionCompletionStatus byte
-	DoorSensorState                byte
-	NightmodeActive                byte
-	AccessoryBatteryState          byte
-	RemoteAccessStatus             byte
-	BleConnectionStrength          int8
-	WifiConnectionStrength         int8
-	WifiConnectionStatus           byte
-	MqttConnectionStatus           byte
-	ThreadConnectionStatus         byte
+	LastLockAction                 LockState
+	LastLockActionTrigger          Trigger
+	LastLockActionCompletionStatus StatusCode
+	DoorSensorState                DoorSensorState
+	NightmodeActive                bool
+	AccessoryBatteryState          AccessoryStatus
+	RemoteAccessStatus             RemoteAccessStatus
+	BleConnectionStrength          ConnectionStrength
+	WifiConnectionStrength         ConnectionStrength
+	WifiConnectionStatus           WifiConnectionStatus
+	MqttConnectionStatus           MqttConnectionStatus
+	ThreadConnectionStatus         ThreadConnectionStatus
 }
 
 func (c *KeyturnerStates) GetCommandCode() CommandCode {
@@ -489,9 +706,9 @@ func (c *KeyturnerStates) FromMessage(b []byte) error {
 	if len(b) < 26 && len(b) > 27 { // TODO: which one is the correct length?
 		return fmt.Errorf("keyturner states length must be between 26 and 27 bytes, got: %d", len(b))
 	}
-	c.NukiState = b[0]
+	c.NukiState = NukiState(b[0])
 	c.LockState = LockState(b[1])
-	c.Trigger = b[2]
+	c.Trigger = Trigger(b[2])
 	c.CurrentTime = time.Date(
 		int(binary.LittleEndian.Uint16(b[3:5])),
 		time.Month(b[5]),
@@ -502,23 +719,24 @@ func (c *KeyturnerStates) FromMessage(b []byte) error {
 		0,
 		time.UTC,
 	)
-	c.TimezoneOffset = b[10]
-	c.CriticalBatteryState = b[11]
-	c.BatteryPercentage = int(b[11]&0xFC) * 2
-	c.ConfigUpdateCount = b[12]
-	c.LockNGoTimer = b[13]
-	c.LastLockAction = b[14]
-	c.LastLockActionTrigger = b[15]
-	c.LastLockActionCompletionStatus = b[16]
-	c.DoorSensorState = b[17]
-	c.NightmodeActive = b[18]
-	c.AccessoryBatteryState = b[19]
-	c.RemoteAccessStatus = b[20]
-	c.BleConnectionStrength = int8(b[21])
-	c.WifiConnectionStrength = int8(b[22])
-	c.WifiConnectionStatus = b[23]
-	c.MqttConnectionStatus = b[24]
-	c.ThreadConnectionStatus = b[25]
+	c.TimezoneOffset = int16(binary.LittleEndian.Uint16(b[10:12]))
+	c.BatteryStateCritical = byteToBool(b[12] & 0x01)
+	c.Charging = byteToBool(b[12] & 0x02)
+	c.BatteryPercentage = int(b[12]>>2) * 2
+	c.ConfigUpdateCount = b[13]
+	c.LockNGoTimer = b[14]
+	c.LastLockAction = LockState(b[15])
+	c.LastLockActionTrigger = Trigger(b[16])
+	c.LastLockActionCompletionStatus = StatusCode(b[17])
+	c.DoorSensorState = DoorSensorState(b[18])
+	c.NightmodeActive = byteToBool(b[19])
+	c.AccessoryBatteryState = newAccessoryStatus(b[20])
+	c.RemoteAccessStatus = newRemoteAccessStatus(b[21])
+	c.BleConnectionStrength = newConnectionStrength(b[22])
+	c.WifiConnectionStrength = newConnectionStrength(b[23])
+	c.WifiConnectionStatus = newWifiConnectionStatus(b[24])
+	c.MqttConnectionStatus = newMqttConnectionStatus(b[25])
+	c.ThreadConnectionStatus = newThreadConnectionStatus(b[26])
 	return nil
 }
 func (c *KeyturnerStates) GetPayload() []byte {
@@ -642,4 +860,112 @@ func (c *RequestConfig) GetCommandCode() CommandCode {
 
 func (c *RequestConfig) GetPayload() []byte {
 	return c.Nonce
+}
+
+//go:generate stringer -type=LogSortOrder
+type LogSortOrder byte
+
+const (
+	LogSortOrderAscending  LogSortOrder = 0x00
+	LogSortOrderDescending LogSortOrder = 0x01
+)
+
+type RequestLogEntries struct {
+	StartIndex  uint32
+	Count       uint16
+	SortOrder   LogSortOrder
+	TotalCount  byte
+	Nonce       []byte
+	SecurityPin Pin
+}
+
+func (c *RequestLogEntries) FromMessage(b []byte) error {
+	// outbound only command
+	panic("not implemented")
+}
+
+func (c *RequestLogEntries) GetCommandCode() CommandCode {
+	return CommandRequestLogEntries
+}
+
+func (c *RequestLogEntries) GetPayload() []byte {
+	return slices.Concat(
+		binary.LittleEndian.AppendUint32(nil, c.StartIndex),
+		binary.LittleEndian.AppendUint16(nil, c.Count),
+		[]byte{byte(c.SortOrder), c.TotalCount},
+		c.Nonce,
+		c.SecurityPin.GetPinBytes(),
+	)
+}
+
+//go:generate stringer -type=LogEntryType
+type LogEntryType uint8
+
+const (
+	LoggingEnabledDisabled           LogEntryType = 0x01
+	LogLockAction                    LogEntryType = 0x02
+	LogCalibration                   LogEntryType = 0x03
+	LogInitializationRun             LogEntryType = 0x04
+	LogKeypadAction                  LogEntryType = 0x05
+	LogDoorSensor                    LogEntryType = 0x06
+	DoorSensorLoggingEnabledDisabled LogEntryType = 0x07
+)
+
+type LogEntry struct {
+	Index    uint32
+	Time     time.Time
+	AuthId   uint32
+	AuthName string
+	Type     LogEntryType
+	Data     []byte
+}
+
+func (c *LogEntry) FromMessage(b []byte) error {
+	if len(b) < 48 {
+		return fmt.Errorf("log entry length must be at least 48 bytes, got: %d", len(b))
+	}
+	c.Index = binary.LittleEndian.Uint32(b[0:4])
+
+	year := int(binary.LittleEndian.Uint16(b[4:6]))
+	month := int(b[6])
+	day := int(b[7])
+	hour := int(b[8])
+	minute := int(b[9])
+	second := int(b[10])
+	// TODO: this should respect the SLs timezone config --> read during authorization
+	c.Time = time.Date(year, time.Month(month), day, hour, minute, second, 0, time.UTC)
+
+	c.AuthId = binary.LittleEndian.Uint32(b[11:15])
+	c.AuthName = string(bytes.Trim(b[15:47], "\x00"))
+	c.Type = LogEntryType(b[47])
+	c.Data = b[48:]
+	return nil
+}
+
+func (c *LogEntry) GetCommandCode() CommandCode {
+	return CommandLogEntry
+}
+
+func (c *LogEntry) GetPayload() []byte {
+	// response only
+	panic("not implemented")
+}
+
+var _ Command = &AuthorizationInfo{}
+
+type AuthorizationInfo struct {
+	SecurityPinSet bool
+}
+
+func (a *AuthorizationInfo) FromMessage(b []byte) error {
+	a.SecurityPinSet = byteToBool(b[0])
+	return nil
+}
+
+func (a *AuthorizationInfo) GetCommandCode() CommandCode {
+	return CommandAuthorizationInfo
+}
+
+func (a *AuthorizationInfo) GetPayload() []byte {
+	panic("not implemented; response only")
 }
