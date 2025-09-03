@@ -5,28 +5,28 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug (devices scan)",
+            "name": "Debug (ble scan)",
             "type": "go",
             "request": "launch",
             "mode": "debug",
             "program": "${workspaceFolder}",
-            "args": ["devices", "scan"]
+            "args": ["ble", "scan"]
         },
         {
-            "name": "Debug (devices authorize)",
+            "name": "Debug (ble authorize)",
             "type": "go",
             "request": "launch",
             "mode": "debug",
             "program": "${workspaceFolder}",
-            "args": ["devices", "authorize"]
+            "args": ["ble", "authorize"]
         },
         {
-            "name": "Debug (devices lock)",
+            "name": "Debug (ble lock)",
             "type": "go",
             "request": "launch",
             "mode": "debug",
             "program": "${workspaceFolder}",
-            "args": ["devices", "lock"]
+            "args": ["ble", "lock"]
         },
         {
             "name": "Debug (devices list)",
@@ -37,12 +37,20 @@
             "args": ["devices", "list"]
         },
         {
-            "name": "Debug (devices config)",
+            "name": "Debug (ble config)",
             "type": "go",
             "request": "launch",
             "mode": "debug",
             "program": "${workspaceFolder}",
-            "args": ["devices", "config"]
+            "args": ["ble", "config"]
+        },
+        {
+            "name": "Debug (ble logs)",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "program": "${workspaceFolder}",
+            "args": ["ble", "logs"]
         }
     ]
 }
