@@ -43,7 +43,7 @@ func (n *Device) DiscoverPairing() error {
 		// expected, maybe it's an Ultra
 		err = n.DiscoverServicesAndCharacteristics(
 			[]bluetooth.UUID{KeyturnerPairingServiceUltra},
-			[]bluetooth.UUID{KeyturnerPairingGdioCharacteristic},
+			[]bluetooth.UUID{KeyturnerPairingGdioCharacteristicUltra},
 		)
 	}
 	if err != nil {
