@@ -16,45 +16,45 @@ type Flow struct {
 }
 
 // NewAuthenticatedFlow creates a new Flow instance for a Nuki device that was already paired.
-func NewAuthenticatedFlow(ble *nukible.NukiBle, id string) *Flow {
+func NewAuthenticatedFlow(ble *nukible.NukiBle, id string) (*Flow, error) {
 	f := &Flow{
 		ble: ble,
 		id:  id,
 	}
 	err := f.loadAuthContext(id)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	err = f.connect(id)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	err = f.device.DiscoverKeyturnerUsdio()
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	f.initializeHandlerWithCrypto()
 
-	return f
+	return f, nil
 }
 
 // NewAuthenticatedFlow creates a new Flow instance for a Nuki device that was already paired.
-func NewUnauthenticatedFlow(ble *nukible.NukiBle, id string) *Flow {
+func NewUnauthenticatedFlow(ble *nukible.NukiBle, id string) (*Flow, error) {
 	f := &Flow{
 		ble: ble,
 		id:  id,
 	}
 	err := f.connect(id)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	err = f.device.DiscoverPairing()
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	f.initializeHandler()
 
-	return f
+	return f, nil
 }
 
 func (f *Flow) connect(id string) error {

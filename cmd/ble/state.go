@@ -35,7 +35,11 @@ var stateCmd = &cobra.Command{
 				return
 			}
 		}
-		flow := bleflows.NewAuthenticatedFlow(ble, deviceId)
+		flow, err := bleflows.NewAuthenticatedFlow(ble, deviceId)
+		if flow == nil {
+			c.Logger.Error("Failed to create BLE flow", "error", err.Error())
+			return
+		}
 		defer flow.DisconnectDevice()
 
 		status, err := flow.GetStatus()
