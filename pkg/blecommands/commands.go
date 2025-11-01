@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-//go:generate go run golang.org/x/tools/cmd/stringer@latest -type=CommandCode
+//go:generate stringer -type=CommandCode
 type CommandCode uint16
 
 const (
@@ -85,7 +85,7 @@ const (
 	FobAction3 Action = 0x83
 )
 
-//go:generate go run golang.org/x/tools/cmd/stringer@latest -type=StatusCode
+//go:generate stringer -type=StatusCode
 type StatusCode uint8
 
 const (
@@ -93,7 +93,7 @@ const (
 	StatusAccepted StatusCode = 0x01
 )
 
-//go:generate go run golang.org/x/tools/cmd/stringer@latest -type=LockState
+//go:generate stringer -type=LockState
 type LockState uint8
 
 const (
@@ -467,7 +467,7 @@ func (c *LockAction) GetPayload() []byte {
 	)
 }
 
-//go:generate go run golang.org/x/tools/cmd/stringer@latest -type=NukiState
+//go:generate stringer -type=NukiState
 type NukiState byte
 
 const (
@@ -477,7 +477,7 @@ const (
 	NukiStateMaintenanceMode NukiState = 0x04
 )
 
-//go:generate go run golang.org/x/tools/cmd/stringer@latest -type=Trigger
+//go:generate stringer -type=Trigger
 type Trigger byte
 
 const (
@@ -862,7 +862,7 @@ func (c *RequestConfig) GetPayload() []byte {
 	return c.Nonce
 }
 
-//go:generate go run golang.org/x/tools/cmd/stringer@latest -type=LogSortOrder
+//go:generate stringer -type=LogSortOrder
 type LogSortOrder byte
 
 const (
@@ -898,7 +898,7 @@ func (c *RequestLogEntries) GetPayload() []byte {
 	)
 }
 
-//go:generate go run golang.org/x/tools/cmd/stringer@latest -type=LogEntryType
+//go:generate stringer -type=LogEntryType
 type LogEntryType uint8
 
 const (

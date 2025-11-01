@@ -1,6 +1,8 @@
 module github.com/nuki-io/nuki-cli
 
-go 1.24.0
+go 1.23.0
+
+toolchain go1.23.8
 
 require (
 	github.com/charmbracelet/bubbletea v0.22.2-0.20221016150627-cbe309d6241c
@@ -56,7 +58,7 @@ require (
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/exp v0.0.0-20230728194245-b0cb94b80691 // indirect
 	golang.org/x/oauth2 v0.25.0 // indirect
-	golang.org/x/sys v0.37.0 // indirect
+	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/term v0.31.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
