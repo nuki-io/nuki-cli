@@ -38,6 +38,7 @@ jobs:
 
     - name: Build
       run: |
+        go clean
         make build
         make test
       env:
