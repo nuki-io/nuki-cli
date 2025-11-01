@@ -1,4 +1,4 @@
-git_hash := $(shell git rev-parse --short HEAD || echo 'main')
+git_hash := $(shell git describe --always --tags)
 current_time = $(shell date +"%Y-%m-%dT%H:%M:%S")
 
 # Add linker flags
