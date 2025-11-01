@@ -34,7 +34,8 @@ jobs:
     - name: Build
       run: |
         go install golang.org/x/tools/cmd/stringer@latest
-        export PATH=$HOME/go/bin:$PATH
+        export PATH=$(go env GOPATH)/bin:$PATH
+        go env
         make build
         make test
       env:
