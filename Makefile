@@ -3,7 +3,7 @@ current_time = $(shell date +"%Y-%m-%dT%H:%M:%S")
 
 # Add linker flags
 linker_flags = '-s -X github.com/nuki-io/nuki-cli/cmd.BuildTime=${current_time} -X github.com/nuki-io/nuki-cli/cmd.Version=${git_hash}'
-bin_name=nukictl
+bin_name=nukictl$(BIN_SUFFIX)
 
 .PHONY:
 build:
