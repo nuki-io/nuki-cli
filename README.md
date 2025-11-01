@@ -11,8 +11,7 @@ This project is not an officially supported product of Nuki.
 
 ## Requirements
 
-- Go 1.23
-- Stringer (`go install golang.org/x/tools/cmd/stringer@latest`)
+- Go 1.24
 
 ## How to use
 
