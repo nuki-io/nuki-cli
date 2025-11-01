@@ -31,9 +31,17 @@ jobs:
       with:
         go-version: '1.23'
 
+    - name: Prepare
+      run:
+        export PATH=$(go env GOPATH)/bin:$PATH
+        echo $PATH
+        go install golang.org/x/tools/cmd/stringer@latest
+        type stringer
+
     - name: Build
       run: |
-        go install golang.org/x/tools/cmd/stringer@latest
+        echo $PATH
+        type stringer
         make build
         make test
       env:
