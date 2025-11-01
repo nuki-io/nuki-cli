@@ -34,19 +34,16 @@ jobs:
     - name: Prepare
       run: |
         export PATH=$(go env GOPATH)/bin:$PATH
-        echo $PATH
         go install golang.org/x/tools/cmd/stringer@latest
-        type stringer
 
     - name: Build
       run: |
-        echo $PATH
-        type stringer
         make build
         make test
       env:
         GOOS: ${{ matrix.GOOS }}
         GOARCH: ${{ matrix.GOARCH }}
+        CGO_ENABLED: "0"
 
     - uses: actions/upload-artifact@v4
       with:
