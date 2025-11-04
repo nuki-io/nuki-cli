@@ -45,7 +45,6 @@ jobs:
         make build
         make test
       env:
-        CGO_ENABLED: "0"
         BIN_SUFFIX: "${{ matrix.cfg.bin_suffix }}"
 
     - uses: actions/upload-artifact@v4
