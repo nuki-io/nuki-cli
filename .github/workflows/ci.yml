@@ -5,10 +5,10 @@ name: Go
 
 on:
   push:
-    branches: [ "**" ]
-    tags: [ "*" ]
+    branches: ["**"]
+    tags: ["*"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   build:
@@ -27,27 +27,37 @@ jobs:
           # TODO: windows needs more work in the code
           # - windows
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.23'
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.23"
 
-    - name: Prepare
-      run: |
-        export PATH=$(go env GOPATH)/bin:$PATH
-        go install golang.org/x/tools/cmd/stringer@latest
+      - name: Prepare
+        run: |
+          export PATH=$(go env GOPATH)/bin:$PATH
+          go install golang.org/x/tools/cmd/stringer@latest
 
-    - name: Build
-      run: |
-        go clean
-        make build
-        make test
-      env:
-        BIN_SUFFIX: "-${{ matrix.cfg.bin_suffix }}"
+      - name: Build
+        run: |
+          go clean
+          make build
+          make test
+        env:
+          BIN_SUFFIX: "-${{ matrix.cfg.bin_suffix }}"
 
-    - uses: actions/upload-artifact@v4
-      with:
-        name: nukictl-${{ matrix.cfg.bin_suffix }}
-        path: nukictl*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nukictl-${{ matrix.cfg.bin_suffix }}
+          path: nukictl*
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+      - name: Display structure of downloaded files
+        run: ls -R
