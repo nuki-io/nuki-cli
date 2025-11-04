@@ -50,5 +50,5 @@ jobs:
 
     - uses: actions/upload-artifact@v4
       with:
-        name: nukictl
+        name: nukictl-${{ matrix.cfg.bin_suffix }}
         path: nukictl*
