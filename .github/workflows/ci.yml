@@ -12,17 +12,24 @@ on:
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}-latest
+    runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
-        os:
-          - macos
-          - ubuntu
+        cfg:
+          - GOOS: macos
+            GOARCH: amd64
+            runner: macos-15-intel
+          - GOOS: macos
+            GOARCH: arm64
+            runner: macos-latest
+          - GOOS: linux
+            GOARCH: amd64
+            runner: ubuntu-latest
+          - GOOS: linux
+            GOARCH: arm64
+            runner: ubuntu-24.04-arm
           # TODO: windows needs more work in the code
           # - windows
-        arch:
-          - amd64
-          - arm64
     steps:
     - uses: actions/checkout@v4
 
@@ -38,21 +45,12 @@ jobs:
 
     - name: Build
       run: |
-        case $os in
-          macos) export GOOS=darwin ;;
-          ubuntu) export GOOS=linux ;;
-          *)
-            echo "Unsupported OS: $os" >/dev/stderr
-            exit 1
-            ;;
-        esac
-
         go clean
         make build
         make test
       env:
-        os: ${{ matrix.os }}
-        GOARCH: ${{ matrix.arch }}
+        GOOS: ${{ matrix.GOOS }}
+        GOARCH: ${{ matrix.GOARCH }}
         CGO_ENABLED: "0"
 
     - uses: actions/upload-artifact@v4
