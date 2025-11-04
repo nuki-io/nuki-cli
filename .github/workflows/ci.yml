@@ -12,15 +12,15 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}-latest
     strategy:
       matrix:
-        GOOS:
-          - darwin
-          - linux
+        os:
+          - macos
+          - ubuntu
           # TODO: windows needs more work in the code
           # - windows
-        GOARCH:
+        arch:
           - amd64
           - arm64
     steps:
@@ -38,12 +38,21 @@ jobs:
 
     - name: Build
       run: |
+        case $os in
+          macos) export GOOS=darwin ;;
+          ubuntu) export GOOS=linux ;;
+          *)
+            echo "Unsupported OS: $os" >/dev/stderr
+            exit 1
+            ;;
+        esac
+
         go clean
         make build
         make test
       env:
-        GOOS: ${{ matrix.GOOS }}
-        GOARCH: ${{ matrix.GOARCH }}
+        os: ${{ matrix.os }}
+        GOARCH: ${{ matrix.arch }}
         CGO_ENABLED: "0"
 
     - uses: actions/upload-artifact@v4
