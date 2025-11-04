@@ -59,5 +59,13 @@ jobs:
         uses: actions/checkout@v5
       - name: Download artifacts
         uses: actions/download-artifact@v4
-      - name: Display structure of downloaded files
-        run: ls -R
+        with:
+          path: ./artifacts
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        # if: github.ref_type == 'tag'
+        with:
+          files: ./artifacts/*
+          draft: true
+          generate_release_notes: true
+          make_latest: true
