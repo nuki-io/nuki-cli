@@ -12,22 +12,18 @@ on:
 
 jobs:
   build:
-    runs-on: ${{ matrix.runner }}
+    runs-on: ${{ matrix.cfg.runner }}
     strategy:
       matrix:
         cfg:
-          - GOOS: macos
-            GOARCH: amd64
-            runner: macos-15-intel
-          - GOOS: macos
-            GOARCH: arm64
-            runner: macos-latest
-          - GOOS: linux
-            GOARCH: amd64
-            runner: ubuntu-latest
-          - GOOS: linux
-            GOARCH: arm64
-            runner: ubuntu-24.04-arm
+          - runner: macos-15-intel
+            bin_suffix: "-darwin-amd64"
+          - runner: macos-latest
+            bin_suffix: "-darwin-arm64"
+          - runner: ubuntu-latest
+            bin_suffix: "-linux-amd64"
+          - runner: ubuntu-24.04-arm
+            bin_suffix: "-linux-arm64"
           # TODO: windows needs more work in the code
           # - windows
     steps:
@@ -49,9 +45,8 @@ jobs:
         make build
         make test
       env:
-        GOOS: ${{ matrix.GOOS }}
-        GOARCH: ${{ matrix.GOARCH }}
         CGO_ENABLED: "0"
+        BIN_SUFFIX: "${{ matrix.cfg.bin_suffix }}"
 
     - uses: actions/upload-artifact@v4
       with:
