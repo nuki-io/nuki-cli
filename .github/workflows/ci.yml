@@ -61,11 +61,9 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: ./artifacts
-      - name: List files
-        run: tree
       - name: Create Release
         uses: softprops/action-gh-release@v2
-        # if: github.ref_type == 'tag'
+        if: github.ref_type == 'tag'
         with:
           files: ./artifacts/**/*
           draft: true
