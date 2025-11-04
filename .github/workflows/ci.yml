@@ -5,42 +5,67 @@ name: Go
 
 on:
   push:
-    branches: [ "*" ]
-    tags: [ "*" ]
+    branches: ["**"]
+    tags: ["*"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.cfg.runner }}
     strategy:
       matrix:
-        GOOS:
-          - darwin
-          - linux
+        cfg:
+          - runner: macos-15-intel
+            bin_suffix: "darwin-amd64"
+          - runner: macos-latest
+            bin_suffix: "darwin-arm64"
+          - runner: ubuntu-latest
+            bin_suffix: "linux-amd64"
+          - runner: ubuntu-24.04-arm
+            bin_suffix: "linux-arm64"
           # TODO: windows needs more work in the code
           # - windows
-        GOARCH:
-          - amd64
-          - arm64
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.23'
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.23"
 
-    - name: Build
-      run: |
-        go install golang.org/x/tools/cmd/stringer@latest
-        make build
-        make test
-      env:
-        GOOS: ${{ matrix.GOOS }}
-        GOARCH: ${{ matrix.GOARCH }}
+      - name: Prepare
+        run: |
+          export PATH=$(go env GOPATH)/bin:$PATH
+          go install golang.org/x/tools/cmd/stringer@latest
 
-    - uses: actions/upload-artifact@v4
-      with:
-        name: nukictl
-        path: nukictl*
+      - name: Build
+        run: |
+          go clean
+          make build
+          make test
+        env:
+          BIN_SUFFIX: "-${{ matrix.cfg.bin_suffix }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nukictl-${{ matrix.cfg.bin_suffix }}
+          path: nukictl*
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag'
+        with:
+          files: ./artifacts/**/*
+          draft: true
+          generate_release_notes: true
+          make_latest: true
