@@ -38,12 +38,11 @@ var logsCmd = &cobra.Command{
 			return
 		}
 
-		t := table.New().Headers("Timestamp", "Action")
+		t := table.New().Headers("Timestamp", "Log")
 		for _, e := range res {
-			t = t.Row(e.Time.Local().String(), e.Type.String())
+			t = t.Row(e.Time.Local().String(), e.String())
 		}
 		fmt.Println(t)
-
 	},
 }
 

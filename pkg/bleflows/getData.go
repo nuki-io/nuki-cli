@@ -77,7 +77,7 @@ func (f *Flow) onRequestLogResponse(buf []byte, sem chan int, entries *[]blecomm
 		slog.Error("Failed to decrypt response", "err", err)
 		<-sem
 	}
-	slog.Info("Received log entry response", "cmd", res.GetCommandCode(), "payload", res)
+	slog.Debug("Received log entry response", "cmd", res.GetCommandCode(), "payload", res)
 	if res.GetCommandCode() == blecommands.CommandLogEntry {
 		entry, ok := res.(*blecommands.LogEntry)
 		if ok {

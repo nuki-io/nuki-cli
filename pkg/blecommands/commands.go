@@ -69,6 +69,7 @@ const (
 	CommandSimpleLockAction            CommandCode = 0x0100
 )
 
+//go:generate stringer -type=Action
 type Action uint8
 
 const (
@@ -468,7 +469,6 @@ const (
 	NukiStateMaintenanceMode NukiState = 0x04
 )
 
-//go:generate stringer -type=Trigger
 type Trigger byte
 
 const (
@@ -478,6 +478,22 @@ const (
 	TriggerAutomatic Trigger = 0x03 // executed automatically (e.g. at a specific time) by the Smart Lock
 	TriggerAutoLock  Trigger = 0x06 // auto lock of the Smart Lock
 )
+
+func (t Trigger) String() string {
+	switch t {
+	case TriggerSystem:
+		return "System"
+	case TriggerManual:
+		return "Manual"
+	case TriggerButton:
+		return "Button"
+	case TriggerAutomatic:
+		return "Automatic"
+	case TriggerAutoLock:
+		return "Auto Lock"
+	}
+	return ""
+}
 
 // KeyturnerStates holds the state information for the Smart Lock.
 type DoorSensorState byte
@@ -888,6 +904,7 @@ const (
 	LogKeypadAction                  LogEntryType = 0x05
 	LogDoorSensor                    LogEntryType = 0x06
 	DoorSensorLoggingEnabledDisabled LogEntryType = 0x07
+	LogFirmwareUpdate                LogEntryType = 0x0A
 )
 
 type LogEntry struct {
@@ -923,6 +940,27 @@ func (c *LogEntry) FromMessage(b []byte) error {
 
 func (c *LogEntry) GetCommandCode() CommandCode {
 	return CommandLogEntry
+}
+
+func (c *LogEntry) String() string {
+	switch c.Type {
+	case LoggingEnabledDisabled:
+		if c.Data[0] == 0 {
+			return "Logging Disabled"
+		} else {
+			return "Logging Enabled"
+		}
+	case LogLockAction, LogCalibration, LogInitializationRun:
+		var suffix string
+		if t := Trigger(c.Data[1]).String(); t != "" {
+			suffix = fmt.Sprintf(" (%s)", t)
+		}
+		return fmt.Sprintf("%v%s", Action(c.Data[0]), suffix)
+	}
+	if c.Type == LogFirmwareUpdate {
+		return fmt.Sprintf("Firmware Update (%d.%d.%d)", c.Data[0], c.Data[1], c.Data[2])
+	}
+	return fmt.Sprintf("%s by %s (ID: %d) at %s", c.Type.String(), c.AuthName, c.AuthId, c.Time.Format(time.RFC3339))
 }
 
 var _ Command = &AuthorizationInfo{}
