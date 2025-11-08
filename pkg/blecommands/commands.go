@@ -220,9 +220,17 @@ func byteToBool(b byte) bool {
 }
 
 type Command interface {
-	FromMessage([]byte) error
 	GetCommandCode() CommandCode
+}
+
+type Request interface {
+	Command
 	GetPayload() []byte
+}
+
+type Response interface {
+	Command
+	FromMessage([]byte) error
 }
 
 type RequestData struct {
@@ -232,10 +240,6 @@ type RequestData struct {
 
 func (c *RequestData) GetCommandCode() CommandCode {
 	return CommandRequestData
-}
-
-func (c *RequestData) FromMessage([]byte) error {
-	return fmt.Errorf("not implemented")
 }
 
 func (c *RequestData) GetPayload() []byte {
@@ -300,9 +304,6 @@ type AuthorizationData struct {
 func (c *AuthorizationData) GetCommandCode() CommandCode {
 	return CommandAuthorizationData
 }
-func (c *AuthorizationData) FromMessage(b []byte) error {
-	return fmt.Errorf("not implemented")
-}
 func (c *AuthorizationData) GetPayload() []byte {
 	appName := [32]byte{}
 	copy(appName[:], c.Name)
@@ -321,10 +322,6 @@ type AuthorizationData5G struct {
 	Id          []byte
 	Name        string
 	SecurityPin Pin
-}
-
-func (a *AuthorizationData5G) FromMessage([]byte) error {
-	panic("not implemented; request only")
 }
 
 func (a *AuthorizationData5G) GetCommandCode() CommandCode {
@@ -348,9 +345,6 @@ type AuthorizationIDConfirmation struct {
 
 func (c *AuthorizationIDConfirmation) GetCommandCode() CommandCode {
 	return CommandAuthorizationIDConfirmation
-}
-func (c *AuthorizationIDConfirmation) FromMessage(b []byte) error {
-	return fmt.Errorf("not implemented")
 }
 func (c *AuthorizationIDConfirmation) GetPayload() []byte {
 	return slices.Concat(c.Authenticator, c.AuthId)
@@ -454,9 +448,6 @@ type LockAction struct {
 
 func (c *LockAction) GetCommandCode() CommandCode {
 	return CommandLockAction
-}
-func (c *LockAction) FromMessage(b []byte) error {
-	return fmt.Errorf("not implemented")
 }
 func (c *LockAction) GetPayload() []byte {
 	return slices.Concat(
@@ -739,9 +730,6 @@ func (c *KeyturnerStates) FromMessage(b []byte) error {
 	c.ThreadConnectionStatus = newThreadConnectionStatus(b[26])
 	return nil
 }
-func (c *KeyturnerStates) GetPayload() []byte {
-	panic("not implemented")
-}
 
 // Config Command 0x0015
 type Config struct {
@@ -838,10 +826,6 @@ func (c *Config) GetCommandCode() CommandCode {
 	return CommandConfig
 }
 
-func (c *Config) GetPayload() []byte {
-	panic("not implemented")
-}
-
 type RequestConfig struct {
 	Nonce []byte
 }
@@ -877,11 +861,6 @@ type RequestLogEntries struct {
 	TotalCount  byte
 	Nonce       []byte
 	SecurityPin Pin
-}
-
-func (c *RequestLogEntries) FromMessage(b []byte) error {
-	// outbound only command
-	panic("not implemented")
 }
 
 func (c *RequestLogEntries) GetCommandCode() CommandCode {
@@ -946,11 +925,6 @@ func (c *LogEntry) GetCommandCode() CommandCode {
 	return CommandLogEntry
 }
 
-func (c *LogEntry) GetPayload() []byte {
-	// response only
-	panic("not implemented")
-}
-
 var _ Command = &AuthorizationInfo{}
 
 type AuthorizationInfo struct {
@@ -964,8 +938,4 @@ func (a *AuthorizationInfo) FromMessage(b []byte) error {
 
 func (a *AuthorizationInfo) GetCommandCode() CommandCode {
 	return CommandAuthorizationInfo
-}
-
-func (a *AuthorizationInfo) GetPayload() []byte {
-	panic("not implemented; response only")
 }

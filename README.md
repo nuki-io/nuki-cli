@@ -32,7 +32,7 @@ This contains the low level handling of BLE with the library tinygo.org/x/blueto
 
 ### blecommands
 
-Contains the command structs that are used to communicate with smartlocks. Every command has its own struct with adequate Go datatypes, like mapping datetime structures or adding enums.
+Contains the command structs that are used to communicate with smartlocks. Every command has its own struct with adequate Go datatypes, like mapping datetime structures or adding enums. It also handles message encryption and decryption.
 
 If you just want to communicate with a device and want to implement all flow and error handling by yourself, this is the package you need.
 

@@ -23,7 +23,7 @@ func (f *Flow) GetConfig() (*blecommands.Config, error) {
 	return res.(*blecommands.Config), nil
 }
 
-func (f *Flow) RequestData(cmd blecommands.CommandCode) (*blecommands.Command, error) {
+func (f *Flow) RequestData(cmd blecommands.CommandCode) (*blecommands.Response, error) {
 	cfg := &blecommands.RequestData{CommandIdentifier: cmd}
 	msg := f.handler.ToEncryptedMessage(cfg, GetNonce24())
 	res, err := f.handler.FromEncryptedDeviceResponse(f.device.WriteUsdio(msg))

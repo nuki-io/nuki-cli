@@ -21,7 +21,7 @@ func NewBleHandler(crypto Crypto, authId []byte) *BleHandler {
 	}
 }
 
-func (h *BleHandler) ToMessage(c Command) []byte {
+func (h *BleHandler) ToMessage(c Request) []byte {
 	payload := c.GetPayload()
 	res := make([]byte, 2+len(payload))
 	binary.LittleEndian.PutUint16(res, uint16(c.GetCommandCode()))
@@ -32,7 +32,7 @@ func (h *BleHandler) ToMessage(c Command) []byte {
 	return res
 }
 
-func (h *BleHandler) ToEncryptedMessage(c Command, nonce []byte) []byte {
+func (h *BleHandler) ToEncryptedMessage(c Request, nonce []byte) []byte {
 	payload := c.GetPayload()
 	// length = authId + command + payload length + CRC
 	pdata := make([]byte, 0, 4+2+len(payload)+2)
@@ -74,7 +74,7 @@ func (h *BleHandler) FromDeviceResponse(b []byte) (Command, error) {
 	if !ok {
 		return nil, fmt.Errorf("unhandled response command code: %x, name: %s", int(cmdCode), cmdCode)
 	}
-	cmd := cmdImpl()
+	cmd := cmdImpl().(Response)
 	cmd.FromMessage(payload)
 	if e, ok := cmd.(*ErrorReport); ok {
 		return cmd, fmt.Errorf("%s, command: %s", e.Error, e.CommandIdentifier)
@@ -83,7 +83,7 @@ func (h *BleHandler) FromDeviceResponse(b []byte) (Command, error) {
 	return cmd, nil
 }
 
-func (h *BleHandler) FromEncryptedDeviceResponse(b []byte) (Command, error) {
+func (h *BleHandler) FromEncryptedDeviceResponse(b []byte) (Response, error) {
 	nonce := b[0:24]
 	authId := b[24:28]
 	// msgLen := b[28:30]
@@ -117,7 +117,7 @@ func (h *BleHandler) FromEncryptedDeviceResponse(b []byte) (Command, error) {
 	if !ok {
 		return nil, fmt.Errorf("unhandled response command code: %x, name: %s", int(cmdCode), cmdCode)
 	}
-	cmd := cmdImpl()
+	cmd := cmdImpl().(Response)
 	if e, ok := cmd.(*ErrorReport); ok {
 		cmd.FromMessage(payload)
 		return cmd, fmt.Errorf("%s, command: %s", e.Error, e.CommandIdentifier)
