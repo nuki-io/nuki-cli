@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"strconv"
 	"time"
 
 	c "github.com/nuki-io/nuki-cli/cmd"
@@ -9,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var pin string
+var pin int
 
 // authorizeCmd represents the authorize command
 var authorizeCmd = &cobra.Command{
@@ -34,7 +35,7 @@ var authorizeCmd = &cobra.Command{
 		}
 		defer flow.DisconnectDevice()
 
-		err = flow.Authorize(pin)
+		err = flow.Authorize(strconv.Itoa(pin))
 		if err != nil {
 			c.Logger.Error("Failed to authorize", "error", err.Error())
 			return
@@ -44,5 +45,5 @@ var authorizeCmd = &cobra.Command{
 
 func init() {
 	bleCmd.AddCommand(authorizeCmd)
-	authorizeCmd.Flags().StringVarP(&pin, "pin", "p", "", "The PIN code to use for authorization.")
+	authorizeCmd.Flags().IntVarP(&pin, "pin", "p", 0, "The PIN code to use for authorization.")
 }
