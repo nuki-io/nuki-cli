@@ -10,65 +10,6 @@ import (
 	"time"
 )
 
-//go:generate stringer -type=CommandCode
-type CommandCode uint16
-
-const (
-	CommandRequestData                 CommandCode = 0x0001
-	CommandPublicKey                   CommandCode = 0x0003
-	CommandChallenge                   CommandCode = 0x0004
-	CommandAuthorizationAuthenticator  CommandCode = 0x0005
-	CommandAuthorizationData           CommandCode = 0x0006
-	CommandAuthorizationData5G         CommandCode = 0x0006
-	CommandAuthorizationID             CommandCode = 0x0007
-	CommandRemoveAuthorizationEntry    CommandCode = 0x0008
-	CommandRequestAuthorizationEntries CommandCode = 0x0009
-	CommandAuthorizationEntry          CommandCode = 0x000A
-	CommandAuthorizationDataInvite     CommandCode = 0x000B
-	CommandKeyturnerStates             CommandCode = 0x000C
-	CommandLockAction                  CommandCode = 0x000D
-	CommandStatus                      CommandCode = 0x000E
-	CommandMostRecentCommand           CommandCode = 0x000F
-	CommandOpeningsClosingsSummary     CommandCode = 0x0010
-	CommandBatteryReport               CommandCode = 0x0011
-	CommandErrorReport                 CommandCode = 0x0012
-	CommandSetConfig                   CommandCode = 0x0013
-	CommandRequestConfig               CommandCode = 0x0014
-	CommandConfig                      CommandCode = 0x0015
-	CommandSetSecurityPIN              CommandCode = 0x0019
-	CommandRequestCalibration          CommandCode = 0x001A
-	CommandRequestReboot               CommandCode = 0x001D
-	CommandAuthorizationIDConfirmation CommandCode = 0x001E
-	CommandAuthorizationIDInvite       CommandCode = 0x001F
-	CommandVerifySecurityPIN           CommandCode = 0x0020
-	CommandUpdateTime                  CommandCode = 0x0021
-	CommandUpdateAuthorizationEntry    CommandCode = 0x0025
-	CommandAuthorizationEntryCount     CommandCode = 0x0027
-	CommandRequestLogEntries           CommandCode = 0x0031
-	CommandLogEntry                    CommandCode = 0x0032
-	CommandLogEntryCount               CommandCode = 0x0033
-	CommandEnableLogging               CommandCode = 0x0034
-	CommandSetAdvancedConfig           CommandCode = 0x0035
-	CommandRequestAdvancedConfig       CommandCode = 0x0036
-	CommandAdvancedConfig              CommandCode = 0x0037
-	CommandAddTimeControlEntry         CommandCode = 0x0039
-	CommandTimeControlEntryID          CommandCode = 0x003A
-	CommandRemoveTimeControlEntry      CommandCode = 0x003B
-	CommandRequestTimeControlEntries   CommandCode = 0x003C
-	CommandTimeControlEntryCount       CommandCode = 0x003D
-	CommandTimeControlEntry            CommandCode = 0x003E
-	CommandUpdateTimeControlEntry      CommandCode = 0x003F
-	CommandAddKeypadCode               CommandCode = 0x0041
-	CommandKeypadCodeID                CommandCode = 0x0042
-	CommandRequestKeypadCodes          CommandCode = 0x0043
-	CommandKeypadCodeCount             CommandCode = 0x0044
-	CommandKeypadCode                  CommandCode = 0x0045
-	CommandUpdateKeypadCode            CommandCode = 0x0046
-	CommandRemoveKeypadCode            CommandCode = 0x0047
-	CommandAuthorizationInfo           CommandCode = 0x004C
-	CommandSimpleLockAction            CommandCode = 0x0100
-)
-
 //go:generate stringer -type=Action
 type Action uint8
 
@@ -111,114 +52,6 @@ const (
 	LockStateMotorBlocked    LockState = 0xFE
 	LockStateUndefined       LockState = 0xFF
 )
-
-var cmdImplMap = map[CommandCode]func() Command{
-	CommandRequestData: func() Command { return Command(&RequestData{}) },
-	CommandPublicKey:   func() Command { return Command(&PublicKey{}) },
-	CommandChallenge:   func() Command { return Command(&Challenge{}) },
-	// CommandAuthorizationAuthenticator:  func() Command { return Command(&AuthorizationAuthenticator{}) },
-	// CommandAuthorizationData:           func() Command { return Command(&AuthorizationData{}) },
-	CommandAuthorizationID: func() Command { return Command(&AuthorizationID{}) },
-	// CommandRemoveAuthorizationEntry:    func() Command { return Command(&RemoveAuthorizationEntry{}) },
-	// CommandRequestAuthorizationEntries: func() Command { return Command(&RequestAuthorizationEntries{}) },
-	// CommandAuthorizationEntry:          func() Command { return Command(&AuthorizationEntry{}) },
-	// CommandAuthorizationDataInvite:     func() Command { return Command(&AuthorizationDataInvite{}) },
-	CommandKeyturnerStates: func() Command { return Command(&KeyturnerStates{}) },
-	// CommandLockAction:                  func() Command { return Command(&LockAction{}) },
-	CommandStatus: func() Command { return Command(&Status{}) },
-	// CommandMostRecentCommand:           func() Command { return Command(&MostRecentCommand{}) },
-	// CommandOpeningsClosingsSummary:     func() Command { return Command(&OpeningsClosingsSummary{}) },
-	// CommandBatteryReport:               func() Command { return Command(&BatteryReport{}) },
-	CommandErrorReport: func() Command { return Command(&ErrorReport{}) },
-	// CommandSetConfig:                   func() Command { return Command(&SetConfig{}) },
-	// CommandRequestConfig:               func() Command { return Command(&RequestConfig{}) },
-	CommandConfig: func() Command { return Command(&Config{}) },
-	// CommandSetSecurityPIN:              func() Command { return Command(&SetSecurityPIN{}) },
-	// CommandRequestCalibration:          func() Command { return Command(&RequestCalibration{}) },
-	// CommandRequestReboot:               func() Command { return Command(&RequestReboot{}) },
-	// CommandAuthorizationIDConfirmation: func() Command { return Command(&AuthorizationIDConfirmation{}) },
-	// CommandAuthorizationIDInvite:       func() Command { return Command(&AuthorizationIDInvite{}) },
-	// CommandVerifySecurityPIN:           func() Command { return Command(&VerifySecurityPIN{}) },
-	// CommandUpdateTime:                  func() Command { return Command(&UpdateTime{}) },
-	// CommandUpdateAuthorizationEntry:    func() Command { return Command(&UpdateAuthorizationEntry{}) },
-	// CommandAuthorizationEntryCount:     func() Command { return Command(&AuthorizationEntryCount{}) },
-	CommandRequestLogEntries: func() Command { return Command(&RequestLogEntries{}) },
-	CommandLogEntry:          func() Command { return Command(&LogEntry{}) },
-	// CommandLogEntryCount:     func() Command { return Command(&LogEntryCount{}) },
-	// CommandEnableLogging:               func() Command { return Command(&EnableLogging{}) },
-	// CommandSetAdvancedConfig:           func() Command { return Command(&SetAdvancedConfig{}) },
-	// CommandRequestAdvancedConfig:       func() Command { return Command(&RequestAdvancedConfig{}) },
-	// CommandAdvancedConfig:              func() Command { return Command(&AdvancedConfig{}) },
-	// CommandAddTimeControlEntry:         func() Command { return Command(&AddTimeControlEntry{}) },
-	// CommandTimeControlEntryID:          func() Command { return Command(&TimeControlEntryID{}) },
-	// CommandRemoveTimeControlEntry:      func() Command { return Command(&RemoveTimeControlEntry{}) },
-	// CommandRequestTimeControlEntries:   func() Command { return Command(&RequestTimeControlEntries{}) },
-	// CommandTimeControlEntryCount:       func() Command { return Command(&TimeControlEntryCount{}) },
-	// CommandTimeControlEntry:            func() Command { return Command(&TimeControlEntry{}) },
-	// CommandUpdateTimeControlEntry:      func() Command { return Command(&UpdateTimeControlEntry{}) },
-	// CommandAddKeypadCode:               func() Command { return Command(&AddKeypadCode{}) },
-	// CommandKeypadCodeID:                func() Command { return Command(&KeypadCodeID{}) },
-	// CommandRequestKeypadCodes:          func() Command { return Command(&RequestKeypadCodes{}) },
-	// CommandKeypadCodeCount:             func() Command { return Command(&KeypadCodeCount{}) },
-	// CommandKeypadCode:                  func() Command { return Command(&KeypadCode{}) },
-	// CommandUpdateKeypadCode:            func() Command { return Command(&UpdateKeypadCode{}) },
-	// CommandRemoveKeypadCode:            func() Command { return Command(&RemoveKeypadCode{}) },
-	CommandAuthorizationInfo: func() Command { return Command(&AuthorizationInfo{}) },
-	// CommandSimpleLockAction:            func() Command { return Command(&SimpleLockAction{}) },
-}
-var timezoneMap = map[uint16]string{
-	0:     "Africa/Cairo",
-	1:     "Africa/Lagos",
-	2:     "Africa/Maputo",
-	3:     "Africa/Nairobi",
-	4:     "America/Anchorage",
-	5:     "America/Argentina/Buenos_Aires",
-	6:     "America/Chicago",
-	7:     "America/Denver",
-	8:     "America/Halifax",
-	9:     "America/Los_Angeles",
-	10:    "America/Manaus",
-	11:    "America/Mexico_City",
-	12:    "America/New_York",
-	13:    "America/Phoenix",
-	14:    "America/Regina",
-	15:    "America/Santiago",
-	16:    "America/Sao_Paulo",
-	17:    "America/St_Johns",
-	18:    "Asia/Bangkok",
-	19:    "Asia/Dubai",
-	20:    "Asia/Hong_Kong",
-	21:    "Asia/Jerusalem",
-	22:    "Asia/Karachi",
-	23:    "Asia/Kathmandu",
-	24:    "Asia/Kolkata",
-	25:    "Asia/Riyadh",
-	26:    "Asia/Seoul",
-	27:    "Asia/Shanghai",
-	28:    "Asia/Tehran",
-	29:    "Asia/Tokyo",
-	30:    "Asia/Yangon",
-	31:    "Australia/Adelaide",
-	32:    "Australia/Brisbane",
-	33:    "Australia/Darwin",
-	34:    "Australia/Hobart",
-	35:    "Australia/Perth",
-	36:    "Australia/Sydney",
-	37:    "Europe/Berlin",
-	38:    "Europe/Helsinki",
-	39:    "Europe/Istanbul",
-	40:    "Europe/London",
-	41:    "Europe/Moscow",
-	42:    "Pacific/Auckland",
-	43:    "Pacific/Guam",
-	44:    "Pacific/Honolulu",
-	45:    "Pacific/Pago_Pago",
-	65535: "", // Special case:  No timezone
-}
-
-func byteToBool(b byte) bool {
-	return b != 0
-}
 
 type Command interface {
 	GetCommandCode() CommandCode
@@ -716,16 +549,7 @@ func (c *KeyturnerStates) FromMessage(b []byte) error {
 	c.NukiState = NukiState(b[0])
 	c.LockState = LockState(b[1])
 	c.Trigger = Trigger(b[2])
-	c.CurrentTime = time.Date(
-		int(binary.LittleEndian.Uint16(b[3:5])),
-		time.Month(b[5]),
-		int(b[6]),
-		int(b[7]),
-		int(b[8]),
-		int(b[9]),
-		0,
-		time.UTC,
-	)
+	c.CurrentTime = fromNukiTime(b[3:10], time.UTC)
 	c.TimezoneOffset = int16(binary.LittleEndian.Uint16(b[10:12]))
 	c.BatteryStateCritical = byteToBool(b[12] & 0x01)
 	c.Charging = byteToBool(b[12] & 0x02)
@@ -801,17 +625,9 @@ func (c *Config) FromMessage(b []byte) error {
 	c.LedEnabled = byteToBool(b[47])
 	c.LedBrightness = b[48]
 
-	year := int(binary.LittleEndian.Uint16(b[49:51]))
-	month := int(b[51])
-	day := int(b[52])
-	hour := int(b[53])
-	minute := int(b[54])
-	second := int(b[55])
-
 	c.TimezoneID = binary.LittleEndian.Uint16(b[72:74])
 	tz := c.GetTimezoneLocation()
-	c.CurrentTime = time.Date(year, time.Month(month), day, hour, minute, second, 0, tz)
-
+	c.CurrentTime = fromNukiTime(b[49:56], tz)
 	c.TimezoneOffset = int16(binary.LittleEndian.Uint16(b[56:58]))
 	c.DstMode = b[58]
 	c.HasFob = byteToBool(b[59])
@@ -921,16 +737,7 @@ func (c *LogEntry) FromMessage(b []byte) error {
 		return fmt.Errorf("log entry length must be at least 48 bytes, got: %d", len(b))
 	}
 	c.Index = binary.LittleEndian.Uint32(b[0:4])
-
-	year := int(binary.LittleEndian.Uint16(b[4:6]))
-	month := int(b[6])
-	day := int(b[7])
-	hour := int(b[8])
-	minute := int(b[9])
-	second := int(b[10])
-	// TODO: this should respect the SLs timezone config --> read during authorization
-	c.Time = time.Date(year, time.Month(month), day, hour, minute, second, 0, time.UTC)
-
+	c.Time = fromNukiTime(b[4:11], time.UTC)
 	c.AuthId = binary.LittleEndian.Uint32(b[11:15])
 	c.AuthName = string(bytes.Trim(b[15:47], "\x00"))
 	c.Type = LogEntryType(b[47])
