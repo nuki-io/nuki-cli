@@ -70,11 +70,11 @@ func (h *BleHandler) FromDeviceResponse(b []byte) (Command, error) {
 	if crcReceived != crcExpect {
 		return nil, fmt.Errorf("CRC mismatch: expected %x, got %x", crcExpect, crcReceived)
 	}
-	cmdImpl, ok := cmdImplMap[cmdCode]
+	cmdImpl, ok := responseImplMap[cmdCode]
 	if !ok {
 		return nil, fmt.Errorf("unhandled response command code: %x, name: %s", int(cmdCode), cmdCode)
 	}
-	cmd := cmdImpl().(Response)
+	cmd := cmdImpl()
 	cmd.FromMessage(payload)
 	if e, ok := cmd.(*ErrorReport); ok {
 		return cmd, fmt.Errorf("%s, command: %s", e.Error, e.CommandIdentifier)
@@ -113,11 +113,11 @@ func (h *BleHandler) FromEncryptedDeviceResponse(b []byte) (Response, error) {
 	if crcReceived != crcExpect {
 		return nil, fmt.Errorf("CRC mismatch: expected %x, got %x", crcExpect, crcReceived)
 	}
-	cmdImpl, ok := cmdImplMap[cmdCode]
+	cmdImpl, ok := responseImplMap[cmdCode]
 	if !ok {
 		return nil, fmt.Errorf("unhandled response command code: %x, name: %s", int(cmdCode), cmdCode)
 	}
-	cmd := cmdImpl().(Response)
+	cmd := cmdImpl()
 	if e, ok := cmd.(*ErrorReport); ok {
 		cmd.FromMessage(payload)
 		return cmd, fmt.Errorf("%s, command: %s", e.Error, e.CommandIdentifier)

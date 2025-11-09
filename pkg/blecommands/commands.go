@@ -27,7 +27,7 @@ const (
 	FobAction3 Action = 0x83
 )
 
-//go:generate stringer -type=StatusCode
+//go:generate stringer -type=StatusCode -trimprefix=Status
 type StatusCode uint8
 
 const (
@@ -35,7 +35,7 @@ const (
 	StatusAccepted StatusCode = 0x01
 )
 
-//go:generate stringer -type=LockState
+//go:generate stringer -type=LockState -trimprefix=LockState
 type LockState uint8
 
 const (
@@ -292,7 +292,7 @@ func (c *LockAction) GetPayload() []byte {
 	)
 }
 
-//go:generate stringer -type=NukiState
+//go:generate stringer -type=NukiState -trimprefix=NukiState
 type NukiState byte
 
 const (
@@ -678,7 +678,7 @@ func (c *RequestConfig) GetPayload() []byte {
 	return c.Nonce
 }
 
-//go:generate stringer -type=LogSortOrder
+//go:generate stringer -type=LogSortOrder -trimprefix=LogSortOrder
 type LogSortOrder byte
 
 const (
