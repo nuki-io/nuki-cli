@@ -67,6 +67,8 @@ type Response interface {
 	FromMessage([]byte) error
 }
 
+var _ Request = &RequestData{}
+
 type RequestData struct {
 	CommandIdentifier CommandCode
 	// AdditionalData    []byte
@@ -81,6 +83,8 @@ func (c *RequestData) GetPayload() []byte {
 	binary.LittleEndian.PutUint16(payload, uint16(c.CommandIdentifier))
 	return payload
 }
+
+var _ Request = &PublicKey{}
 
 type PublicKey struct {
 	PublicKey []byte
@@ -99,6 +103,8 @@ func (c *PublicKey) FromMessage(b []byte) error {
 func (c *PublicKey) GetPayload() []byte {
 	return c.PublicKey
 }
+
+var _ Request = &AuthorizationAuthenticator{}
 
 type AuthorizationAuthenticator struct {
 	Authenticator []byte
@@ -127,6 +133,8 @@ const (
 	AuthorizationTypeKeypad AuthorizationType = 0x03 // Keypad
 )
 
+var _ Request = &AuthorizationData{}
+
 type AuthorizationData struct {
 	Authenticator []byte
 	IdType        AuthorizationType
@@ -150,7 +158,7 @@ func (c *AuthorizationData) GetPayload() []byte {
 	)
 }
 
-var _ Command = &AuthorizationData5G{}
+var _ Request = &AuthorizationData5G{}
 
 type AuthorizationData5G struct {
 	Id          []byte
@@ -172,6 +180,8 @@ func (a *AuthorizationData5G) GetPayload() []byte {
 	)
 }
 
+var _ Request = &AuthorizationIDConfirmation{}
+
 type AuthorizationIDConfirmation struct {
 	Authenticator []byte
 	AuthId        []byte
@@ -183,6 +193,8 @@ func (c *AuthorizationIDConfirmation) GetCommandCode() CommandCode {
 func (c *AuthorizationIDConfirmation) GetPayload() []byte {
 	return slices.Concat(c.Authenticator, c.AuthId)
 }
+
+var _ Response = &Challenge{}
 
 type Challenge struct {
 	Nonce []byte
@@ -201,6 +213,8 @@ func (c *Challenge) FromMessage(b []byte) error {
 func (c *Challenge) GetPayload() []byte {
 	return c.Nonce
 }
+
+var _ Response = &AuthorizationID{}
 
 // TODO: probably better to split it into 5G and pre-5G versions
 type AuthorizationID struct {
@@ -233,6 +247,8 @@ func (c *AuthorizationID) GetPayload() []byte {
 	return slices.Concat(c.Authenticator, c.AuthId, c.Uuid, c.Nonce)
 }
 
+var _ Response = &Status{}
+
 type Status struct {
 	Status StatusCode
 }
@@ -250,6 +266,8 @@ func (c *Status) FromMessage(b []byte) error {
 func (c *Status) GetPayload() []byte {
 	return []byte{byte(c.Status)}
 }
+
+var _ Response = &ErrorReport{}
 
 type ErrorReport struct {
 	ErrorCode         byte
@@ -272,6 +290,8 @@ func (c *ErrorReport) FromMessage(b []byte) error {
 func (c *ErrorReport) GetPayload() []byte {
 	return []byte{byte(c.ErrorCode), byte(c.CommandIdentifier), byte(c.CommandIdentifier >> 8)}
 }
+
+var _ Request = &LockAction{}
 
 type LockAction struct {
 	Action Action
@@ -328,7 +348,6 @@ func (t Trigger) String() string {
 	return ""
 }
 
-// KeyturnerStates holds the state information for the Smart Lock.
 type DoorSensorState byte
 
 const (
@@ -513,6 +532,8 @@ func newThreadConnectionStatus(b byte) ThreadConnectionStatus {
 	}
 }
 
+var _ Response = &KeyturnerStates{}
+
 type KeyturnerStates struct {
 	NukiState            NukiState
 	LockState            LockState
@@ -570,6 +591,8 @@ func (c *KeyturnerStates) FromMessage(b []byte) error {
 	c.ThreadConnectionStatus = newThreadConnectionStatus(b[26])
 	return nil
 }
+
+var _ Response = &Config{}
 
 // Config Command 0x0015
 type Config struct {
@@ -658,6 +681,8 @@ func (c *Config) GetCommandCode() CommandCode {
 	return CommandConfig
 }
 
+var _ Request = &RequestConfig{}
+
 type RequestConfig struct {
 	Nonce []byte
 }
@@ -685,6 +710,8 @@ const (
 	LogSortOrderAscending  LogSortOrder = 0x00
 	LogSortOrderDescending LogSortOrder = 0x01
 )
+
+var _ Request = &RequestLogEntries{}
 
 type RequestLogEntries struct {
 	StartIndex  uint32
@@ -722,6 +749,8 @@ const (
 	DoorSensorLoggingEnabledDisabled LogEntryType = 0x07
 	LogFirmwareUpdate                LogEntryType = 0x0A
 )
+
+var _ Response = &LogEntry{}
 
 type LogEntry struct {
 	Index    uint32
@@ -770,7 +799,7 @@ func (c *LogEntry) String() string {
 	return fmt.Sprintf("%s by %s (ID: %d) at %s", c.Type.String(), c.AuthName, c.AuthId, c.Time.Format(time.RFC3339))
 }
 
-var _ Command = &AuthorizationInfo{}
+var _ Response = &AuthorizationInfo{}
 
 type AuthorizationInfo struct {
 	SecurityPinSet bool
