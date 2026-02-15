@@ -1,16 +1,11 @@
-/*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
-	"runtime"
+	"fmt"
 	"time"
 
-	c "github.com/nuki-io/nuki-cli/cmd"
 	"github.com/nuki-io/nuki-cli/pkg/blecommands"
 	"github.com/nuki-io/nuki-cli/pkg/bleflows"
-	"github.com/nuki-io/nuki-cli/pkg/nukible"
 	"github.com/spf13/cobra"
 )
 
@@ -23,50 +18,28 @@ var toggleCmd = &cobra.Command{
 	Long:    `Depending on the lock's current state, this command either locks or unlocks.`,
 	PreRunE: mustDeviceId,
 	Run: func(cmd *cobra.Command, args []string) {
-		ble, err := nukible.NewNukiBle()
-		if err != nil {
-			c.Logger.Error("Failed to enable bluetooth device", "error", err.Error())
-			return
-		}
-		if runtime.GOOS == "linux" {
-			err = ble.ScanForDevice(deviceId, 10*time.Second)
+		withAuthenticatedFlow(func(flow *bleflows.Flow) error {
+			status, err := flow.GetStatus()
 			if err != nil {
-				c.Logger.Error("Failed to scan", "error", err.Error())
-				return
+				return fmt.Errorf("failed to get status: %w", err)
 			}
-		}
-		flow, err := bleflows.NewAuthenticatedFlow(ble, deviceId)
-		if flow == nil {
-			c.Logger.Error("Failed to create BLE flow", "error", err.Error())
-			return
-		}
-		defer flow.DisconnectDevice()
-
-		status, err := flow.GetStatus()
-		if err != nil {
-			c.Logger.Error("Failed to get status", "error", err.Error())
-			return
-		}
-		var startAt int
-		if status.LockState == blecommands.LockStateLocked {
-			startAt = 0
-		} else {
-			startAt = 1
-		}
-		for i := range repeats {
-			if i%2 == startAt {
-				err = flow.PerformLockOperation(blecommands.Unlock)
+			var startAt int
+			if status.LockState == blecommands.LockStateLocked {
+				startAt = 0
 			} else {
-				err = flow.PerformLockOperation(blecommands.Lock)
+				startAt = 1
 			}
-			// TODO: although we received the StatusComplete at this point, we apparently need to wait a bit longer
-			time.Sleep(500 * time.Millisecond)
-		}
-
-		if err != nil {
-			c.Logger.Error("Failed to perform lock operation", "error", err.Error())
-			return
-		}
+			for i := range repeats {
+				if i%2 == startAt {
+					err = flow.PerformLockOperation(blecommands.Unlock)
+				} else {
+					err = flow.PerformLockOperation(blecommands.Lock)
+				}
+				// TODO: although we received the StatusComplete at this point, we apparently need to wait a bit longer
+				time.Sleep(500 * time.Millisecond)
+			}
+			return err
+		})
 	},
 }
 
