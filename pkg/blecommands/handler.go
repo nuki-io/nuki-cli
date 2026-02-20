@@ -75,7 +75,10 @@ func (h *BleHandler) FromDeviceResponse(b []byte) (Command, error) {
 		return nil, fmt.Errorf("unhandled response command code: %x, name: %s", int(cmdCode), cmdCode)
 	}
 	cmd := cmdImpl()
-	cmd.FromMessage(payload)
+	err := cmd.FromMessage(payload)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse command: %w", err)
+	}
 	if e, ok := cmd.(*ErrorReport); ok {
 		return cmd, fmt.Errorf("%s, command: %s", e.Error, e.CommandIdentifier)
 	}
@@ -118,13 +121,12 @@ func (h *BleHandler) FromEncryptedDeviceResponse(b []byte) (Response, error) {
 		return nil, fmt.Errorf("unhandled response command code: %x, name: %s", int(cmdCode), cmdCode)
 	}
 	cmd := cmdImpl()
-	if e, ok := cmd.(*ErrorReport); ok {
-		cmd.FromMessage(payload)
-		return cmd, fmt.Errorf("%s, command: %s", e.Error, e.CommandIdentifier)
-	}
 	err = cmd.FromMessage(payload)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse command: %w", err)
+	}
+	if e, ok := cmd.(*ErrorReport); ok {
+		return cmd, fmt.Errorf("%s, command: %s", e.Error, e.CommandIdentifier)
 	}
 	return cmd, nil
 }
