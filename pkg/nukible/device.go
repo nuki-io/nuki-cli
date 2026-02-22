@@ -88,21 +88,20 @@ func (n *Device) Disconnect() {
 	n.characteristics = make([]bluetooth.DeviceCharacteristic, 0)
 }
 
-func (n *Device) WritePairing(data []byte) []byte {
+func (n *Device) WritePairing(data []byte) ([]byte, error) {
 	return n.write(n.pairingGdioChar, data, onGdioNotify)
 }
 
-func (n *Device) WriteUsdio(data []byte) []byte {
+func (n *Device) WriteUsdio(data []byte) ([]byte, error) {
 	return n.write(n.keyturnerUsdioChar, data, onGdioNotify)
 }
 
-func (n *Device) WriteUsdioWithCallback(data []byte, cb func([]byte, chan int) []byte) []byte {
+func (n *Device) WriteUsdioWithCallback(data []byte, cb func([]byte, chan error) []byte) ([]byte, error) {
 	return n.write(n.keyturnerUsdioChar, data, cb)
 }
 
-func (n *Device) write(char bluetooth.DeviceCharacteristic, data []byte, cb func([]byte, chan int) []byte) []byte {
-	sem := make(chan int, 1)
-	sem <- 1
+func (n *Device) write(char bluetooth.DeviceCharacteristic, data []byte, cb func([]byte, chan error) []byte) ([]byte, error) {
+	sem := make(chan error, 1)
 
 	slog.Debug("Writing bytes to characteristic", "data", fmt.Sprintf("%x", data))
 	rxData := make([]byte, 0)
@@ -110,15 +109,15 @@ func (n *Device) write(char bluetooth.DeviceCharacteristic, data []byte, cb func
 	n.osWrite(char, data)
 
 	slog.Debug("Waiting for response...")
-	sem <- 1
+	err := <-sem
 	// disable notifications again - TODO: sensible, or should we just enable it once?
 	char.EnableNotifications(nil)
 
-	return rxData
+	return rxData, err
 }
 
-func onGdioNotify(buf []byte, sem chan int) []byte {
+func onGdioNotify(buf []byte, sem chan error) []byte {
 	slog.Debug("Received response", "buf", fmt.Sprintf("%x", buf))
-	<-sem
+	sem <- nil
 	return buf
 }

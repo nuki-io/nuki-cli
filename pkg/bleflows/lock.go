@@ -19,22 +19,21 @@ func (f *Flow) PerformLockOperation(action blecommands.Action) error {
 		Nonce:  nonce,
 	}
 	msg := f.handler.ToEncryptedMessage(lock, GetNonce24())
-	f.device.WriteUsdioWithCallback(msg, f.onLockResponse)
-
-	return nil
+	_, err = f.device.WriteUsdioWithCallback(msg, f.onLockResponse)
+	return err
 }
 
-func (f *Flow) onLockResponse(buf []byte, sem chan int) []byte {
+func (f *Flow) onLockResponse(buf []byte, sem chan error) []byte {
 	slog.Debug("Received response", "buf", fmt.Sprintf("%x", buf))
 	res, err := f.handler.FromEncryptedDeviceResponse(buf)
 	if err != nil {
 		slog.Error("Failed to decrypt response", "err", err)
-		<-sem
+		sem <- err
 		return buf
 	}
 	slog.Info("Received lock action response", "cmd", res.GetCommandCode(), "payload", res)
 	if s, ok := res.(*blecommands.Status); ok && s.Status == blecommands.StatusComplete {
-		<-sem
+		sem <- nil
 	}
 	return buf
 }

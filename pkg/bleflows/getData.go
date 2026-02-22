@@ -15,7 +15,11 @@ func (f *Flow) GetConfig() (*blecommands.Config, error) {
 
 	cfg := &blecommands.RequestConfig{Nonce: nonce}
 	msg := f.handler.ToEncryptedMessage(cfg, GetNonce24())
-	res, err := f.handler.FromEncryptedDeviceResponse(f.device.WriteUsdio(msg))
+	raw, err := f.device.WriteUsdio(msg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config from device: %w", err)
+	}
+	res, err := f.handler.FromEncryptedDeviceResponse(raw)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get config from device: %w", err)
 	}
@@ -26,7 +30,11 @@ func (f *Flow) GetConfig() (*blecommands.Config, error) {
 func (f *Flow) RequestData(cmd blecommands.CommandCode) (*blecommands.Response, error) {
 	cfg := &blecommands.RequestData{CommandIdentifier: cmd}
 	msg := f.handler.ToEncryptedMessage(cfg, GetNonce24())
-	res, err := f.handler.FromEncryptedDeviceResponse(f.device.WriteUsdio(msg))
+	raw, err := f.device.WriteUsdio(msg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to request data from device: %w", err)
+	}
+	res, err := f.handler.FromEncryptedDeviceResponse(raw)
 	if err != nil {
 		return nil, fmt.Errorf("failed to request data from device: %w", err)
 	}
@@ -62,20 +70,21 @@ func (f *Flow) GetLogs(start int, count int) ([]blecommands.LogEntry, error) {
 	}
 	msg := f.handler.ToEncryptedMessage(cfg, GetNonce24())
 	entries := []blecommands.LogEntry{}
-	f.device.WriteUsdioWithCallback(msg,
-		func(buf []byte, sem chan int) []byte {
+	_, err = f.device.WriteUsdioWithCallback(msg,
+		func(buf []byte, sem chan error) []byte {
 			f.onRequestLogResponse(buf, sem, &entries)
 			return buf
 		})
-	return entries, nil
+	return entries, err
 }
 
-func (f *Flow) onRequestLogResponse(buf []byte, sem chan int, entries *[]blecommands.LogEntry) {
+func (f *Flow) onRequestLogResponse(buf []byte, sem chan error, entries *[]blecommands.LogEntry) {
 	slog.Debug("Received response", "buf", fmt.Sprintf("%x", buf))
 	res, err := f.handler.FromEncryptedDeviceResponse(buf)
 	if err != nil {
 		slog.Error("Failed to decrypt response", "err", err)
-		<-sem
+		sem <- err
+		return
 	}
 	slog.Debug("Received log entry response", "cmd", res.GetCommandCode(), "payload", res)
 	if res.GetCommandCode() == blecommands.CommandLogEntry {
@@ -85,6 +94,6 @@ func (f *Flow) onRequestLogResponse(buf []byte, sem chan int, entries *[]blecomm
 		}
 	}
 	if s, ok := res.(*blecommands.Status); ok && s.Status == blecommands.StatusComplete {
-		<-sem
+		sem <- nil
 	}
 }

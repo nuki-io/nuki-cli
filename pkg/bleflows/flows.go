@@ -87,8 +87,11 @@ func (f *Flow) initializeHandlerWithCrypto() {
 }
 func (f *Flow) getChallenge() ([]byte, error) {
 	msg := f.handler.ToEncryptedMessage(&blecommands.RequestData{CommandIdentifier: blecommands.CommandChallenge}, GetNonce24())
-	deviceRes := f.device.WriteUsdio(msg)
-	res, err := f.handler.FromEncryptedDeviceResponse(deviceRes)
+	raw, err := f.device.WriteUsdio(msg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get challenge from device: %w", err)
+	}
+	res, err := f.handler.FromEncryptedDeviceResponse(raw)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get challenge from device: %w", err)
 	}
