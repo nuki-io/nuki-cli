@@ -21,7 +21,7 @@ var listDevicesCmd = &cobra.Command{
 	Short:   "Lists all known devices",
 	Long:    `Lists all devices, either paired locally or registered in Nuki Web.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		auths := viper.Get("authorizations").(map[string]any)
+		auths := viper.GetStringMap("authorizations")
 		devices := make([][]string, 0, len(auths))
 		for _, v := range auths {
 			values := v.(map[string]any)
