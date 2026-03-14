@@ -103,14 +103,6 @@ type RequestConfig struct {
 	Nonce []byte
 }
 
-func (c *RequestConfig) FromMessage(b []byte) error {
-	if len(b) != 32 {
-		return fmt.Errorf("invalid RequestConfig message length")
-	}
-	c.Nonce = b
-	return nil
-}
-
 func (c *RequestConfig) GetCommandCode() CommandCode {
 	return CommandRequestConfig
 }
