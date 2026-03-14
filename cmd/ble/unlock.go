@@ -13,8 +13,8 @@ var unlockCmd = &cobra.Command{
 	Use:     "unlock",
 	Short:   "Unlock a device via Bluetooth",
 	PreRunE: mustDeviceId,
-	Run: func(cmd *cobra.Command, args []string) {
-		withAuthenticatedFlow(func(ctx context.Context, flow *bleflows.Flow) error {
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return withAuthenticatedFlow(func(ctx context.Context, flow *bleflows.Flow) error {
 			return flow.PerformLockOperation(ctx, blecommands.Unlock)
 		})
 	},

@@ -28,8 +28,8 @@ var authorizeCmd = &cobra.Command{
 		}
 		return nil
 	},
-	Run: func(cmd *cobra.Command, args []string) {
-		withUnauthenticatedFlow(func(ctx context.Context, flow *bleflows.Flow) error {
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return withUnauthenticatedFlow(func(ctx context.Context, flow *bleflows.Flow) error {
 			return flow.Authorize(ctx, pin)
 		})
 	},

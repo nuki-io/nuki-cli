@@ -14,8 +14,8 @@ var configCmd = &cobra.Command{
 	Use:     "config",
 	Short:   "Retrieves and display the configuration of the device",
 	PreRunE: mustDeviceId,
-	Run: func(cmd *cobra.Command, args []string) {
-		withAuthenticatedFlow(func(ctx context.Context, flow *bleflows.Flow) error {
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return withAuthenticatedFlow(func(ctx context.Context, flow *bleflows.Flow) error {
 			cfg, err := flow.GetConfig(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to read config: %w", err)

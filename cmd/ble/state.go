@@ -15,8 +15,8 @@ var stateCmd = &cobra.Command{
 	Use:     "state",
 	Short:   "Gets the current lock state of the device",
 	PreRunE: mustDeviceId,
-	Run: func(cmd *cobra.Command, args []string) {
-		withAuthenticatedFlow(func(ctx context.Context, flow *bleflows.Flow) error {
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return withAuthenticatedFlow(func(ctx context.Context, flow *bleflows.Flow) error {
 			status, err := flow.GetStatus(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to get status: %w", err)
@@ -50,6 +50,7 @@ var stateCmd = &cobra.Command{
 			return nil
 		})
 	},
+
 }
 
 func init() {

@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/nuki-io/nuki-cli/cmd"
+	parentcmd "github.com/nuki-io/nuki-cli/cmd"
 	"github.com/nuki-io/nuki-cli/pkg/bleflows"
 	"github.com/nuki-io/nuki-cli/pkg/nukible"
 	"github.com/spf13/cobra"
@@ -27,10 +27,11 @@ var bleCmd = &cobra.Command{
 	Short:            "Command to interact with devices through BLE",
 	Long:             ``,
 	PersistentPreRun: preRun,
+	SilenceUsage:     true,
 }
 
 func init() {
-	cmd.RootCmd.AddCommand(bleCmd)
+	parentcmd.RootCmd.AddCommand(bleCmd)
 	bleCmd.PersistentFlags().StringVarP(&deviceId, "device-id", "d", "", "The device to use. If not set, the device set by set-context command is used. This is ignored for some commands.")
 	// viper.BindPFlag("activeContext", bleCmd.PersistentFlags().Lookup("device-id"))
 }
@@ -52,57 +53,43 @@ func mustDeviceId(cmd *cobra.Command, args []string) error {
 
 // withAuthenticatedFlow creates a BLE adapter, establishes an authenticated flow,
 // and calls fn with a timeout-bounded context. The device is disconnected after fn returns.
-// Errors from setup or fn are logged.
-func withAuthenticatedFlow(fn func(ctx context.Context, flow *bleflows.Flow) error) {
+func withAuthenticatedFlow(fn func(ctx context.Context, flow *bleflows.Flow) error) error {
 	ble, err := nukible.NewNukiBle()
 	if err != nil {
-		cmd.Logger.Error("Failed to enable bluetooth device", "error", err.Error())
-		return
+		return fmt.Errorf("failed to enable bluetooth: %w", err)
 	}
 	if runtime.GOOS == "linux" {
-		err = ble.ScanForDevice(deviceId, 10*time.Second)
-		if err != nil {
-			cmd.Logger.Error("Failed to scan for device", "error", err.Error())
-			return
+		if err = ble.ScanForDevice(deviceId, 10*time.Second); err != nil {
+			return fmt.Errorf("failed to scan for device: %w", err)
 		}
 	}
 	flow, err := bleflows.NewAuthenticatedFlow(ble, deviceId)
 	if err != nil {
-		cmd.Logger.Error("Failed to create BLE flow", "error", err.Error())
-		return
+		return fmt.Errorf("failed to create BLE flow: %w", err)
 	}
 	defer flow.DisconnectDevice()
 	ctx, cancel := context.WithTimeout(context.Background(), bleTimeout)
 	defer cancel()
-	if err := fn(ctx, flow); err != nil {
-		cmd.Logger.Error("Command failed", "error", err.Error())
-	}
+	return fn(ctx, flow)
 }
 
 // withUnauthenticatedFlow creates a BLE adapter, scans for the device (since it is not yet known),
 // establishes an unauthenticated flow, and calls fn with a timeout-bounded context.
 // The flow is disconnected after fn returns.
-// Errors from setup or fn are logged.
-func withUnauthenticatedFlow(fn func(ctx context.Context, flow *bleflows.Flow) error) {
+func withUnauthenticatedFlow(fn func(ctx context.Context, flow *bleflows.Flow) error) error {
 	ble, err := nukible.NewNukiBle()
 	if err != nil {
-		cmd.Logger.Error("Failed to enable bluetooth device", "error", err.Error())
-		return
+		return fmt.Errorf("failed to enable bluetooth: %w", err)
 	}
-	err = ble.ScanForDevice(deviceId, 10*time.Second)
-	if err != nil {
-		cmd.Logger.Error("Failed to scan for device", "error", err.Error())
-		return
+	if err = ble.ScanForDevice(deviceId, 10*time.Second); err != nil {
+		return fmt.Errorf("failed to scan for device: %w", err)
 	}
 	flow, err := bleflows.NewUnauthenticatedFlow(ble, deviceId)
 	if err != nil {
-		cmd.Logger.Error("Failed to create BLE flow", "error", err.Error())
-		return
+		return fmt.Errorf("failed to create BLE flow: %w", err)
 	}
 	defer flow.DisconnectDevice()
 	ctx, cancel := context.WithTimeout(context.Background(), bleTimeout)
 	defer cancel()
-	if err := fn(ctx, flow); err != nil {
-		cmd.Logger.Error("Command failed", "error", err.Error())
-	}
+	return fn(ctx, flow)
 }

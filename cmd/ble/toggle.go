@@ -18,8 +18,8 @@ var toggleCmd = &cobra.Command{
 	Short:   "Toggles the current lock state",
 	Long:    `Depending on the lock's current state, this command either locks or unlocks.`,
 	PreRunE: mustDeviceId,
-	Run: func(cmd *cobra.Command, args []string) {
-		withAuthenticatedFlow(func(ctx context.Context, flow *bleflows.Flow) error {
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return withAuthenticatedFlow(func(ctx context.Context, flow *bleflows.Flow) error {
 			status, err := flow.GetStatus(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to get status: %w", err)
@@ -42,6 +42,7 @@ var toggleCmd = &cobra.Command{
 			return err
 		})
 	},
+
 }
 
 func init() {
