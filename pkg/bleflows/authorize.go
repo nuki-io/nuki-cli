@@ -1,6 +1,7 @@
 package bleflows
 
 import (
+	"context"
 	crypto_rand "crypto/rand"
 	"fmt"
 	"log/slog"
@@ -9,12 +10,12 @@ import (
 	"github.com/nuki-io/nuki-cli/pkg/blecommands"
 )
 
-func (f *Flow) Authorize(pin string) error {
+func (f *Flow) Authorize(ctx context.Context, pin string) error {
 	f.authCtx = NewAuthorizeContext()
 	f.authCtx.Pin = pin
 	slog.Info("Requesting public key from smartlock")
 	msg := f.handler.ToMessage(&blecommands.RequestData{CommandIdentifier: blecommands.CommandPublicKey})
-	raw, err := f.device.WritePairing(msg)
+	raw, err := f.device.WritePairing(ctx, msg)
 	if err != nil {
 		return fmt.Errorf("failed to get public key from device: %w", err)
 	}
@@ -29,7 +30,7 @@ func (f *Flow) Authorize(pin string) error {
 
 	slog.Info("Sending CLI public key", "pubkey", fmt.Sprintf("%x", f.authCtx.CliPublicKey))
 	msg = f.handler.ToMessage(&blecommands.PublicKey{PublicKey: f.authCtx.CliPublicKey})
-	raw, err = f.device.WritePairing(msg)
+	raw, err = f.device.WritePairing(ctx, msg)
 	if err != nil {
 		return fmt.Errorf("failed to send public key to device: %w", err)
 	}
@@ -46,7 +47,7 @@ func (f *Flow) Authorize(pin string) error {
 	authenticator := f.authCtx.GetMessageAuthenticator(f.authCtx.CliPublicKey, f.authCtx.SlPublicKey, challenge)
 	slog.Info("Sending authenticator", "authenticator", fmt.Sprintf("%x", authenticator))
 	msg = f.handler.ToMessage(&blecommands.AuthorizationAuthenticator{Authenticator: authenticator})
-	raw, err = f.device.WritePairing(msg)
+	raw, err = f.device.WritePairing(ctx, msg)
 	if err != nil {
 		return fmt.Errorf("failed to send authenticator to device: %w", err)
 	}
@@ -56,9 +57,9 @@ func (f *Flow) Authorize(pin string) error {
 	}
 
 	if _, ok := res.(*blecommands.AuthorizationInfo); ok {
-		err = f.auth5G(res)
+		err = f.auth5G(ctx, res)
 	} else {
-		err = f.authPre5G(res)
+		err = f.authPre5G(ctx, res)
 	}
 	if err != nil {
 		return err
@@ -66,7 +67,7 @@ func (f *Flow) Authorize(pin string) error {
 
 	f.device.DiscoverKeyturnerUsdio()
 	f.initializeHandlerWithCrypto()
-	nonce, err := f.getChallenge()
+	nonce, err := f.getChallenge(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get challenge from device: %w", err)
 	}
@@ -74,7 +75,7 @@ func (f *Flow) Authorize(pin string) error {
 	slog.Info("Reading config from smartlock")
 	cfg := &blecommands.RequestConfig{Nonce: nonce}
 	msg = f.handler.ToEncryptedMessage(cfg, GetNonce24())
-	raw, err = f.device.WriteUsdio(msg)
+	raw, err = f.device.WriteUsdio(ctx, msg)
 	if err != nil {
 		return fmt.Errorf("failed to get config from device: %w", err)
 	}
@@ -87,7 +88,7 @@ func (f *Flow) Authorize(pin string) error {
 	return nil
 }
 
-func (f *Flow) authPre5G(res blecommands.Command) error {
+func (f *Flow) authPre5G(ctx context.Context, res blecommands.Command) error {
 	challenge := res.(*blecommands.Challenge).Nonce
 	slog.Debug("Received challenge", "challenge", fmt.Sprintf("%x", challenge))
 
@@ -103,7 +104,7 @@ func (f *Flow) authPre5G(res blecommands.Command) error {
 	authData.Authenticator = authenticator
 
 	msg := f.handler.ToMessage(authData)
-	raw, err := f.device.WritePairing(msg)
+	raw, err := f.device.WritePairing(ctx, msg)
 	if err != nil {
 		return fmt.Errorf("failed to send authorization data: %w", err)
 	}
@@ -117,7 +118,7 @@ func (f *Flow) authPre5G(res blecommands.Command) error {
 
 	authenticator = f.authCtx.GetMessageAuthenticator(f.authCtx.AuthId, authId.Nonce)
 	msg = f.handler.ToMessage(&blecommands.AuthorizationIDConfirmation{Authenticator: authenticator, AuthId: f.authCtx.AuthId})
-	raw, err = f.device.WritePairing(msg)
+	raw, err = f.device.WritePairing(ctx, msg)
 	if err != nil {
 		return fmt.Errorf("failed to send authorization ID confirmation: %w", err)
 	}
@@ -130,7 +131,7 @@ func (f *Flow) authPre5G(res blecommands.Command) error {
 	return nil
 }
 
-func (f *Flow) auth5G(res blecommands.Command) error {
+func (f *Flow) auth5G(ctx context.Context, res blecommands.Command) error {
 	// TODO: if security pin is not set, should we also not send in the auth info?
 	_ = res.(*blecommands.AuthorizationInfo)
 
@@ -139,13 +140,17 @@ func (f *Flow) auth5G(res blecommands.Command) error {
 	f.authCtx.AuthId = []byte{0x7F, 0xFF, 0xFF, 0xFF}
 	f.initializeHandlerWithCrypto()
 
+	securityPin := blecommands.NewPin(f.authCtx.Pin)
+	if securityPin == nil {
+		return fmt.Errorf("invalid PIN %q: must be exactly 4 or 6 digits", f.authCtx.Pin)
+	}
 	authData := &blecommands.AuthorizationData5G{
 		Id:          f.authCtx.AppId,
 		Name:        getAuthName(),
-		SecurityPin: blecommands.NewPin(f.authCtx.Pin),
+		SecurityPin: securityPin,
 	}
 	msg := f.handler.ToEncryptedMessage(authData, GetNonce24())
-	raw, err := f.device.WritePairing(msg)
+	raw, err := f.device.WritePairing(ctx, msg)
 	if err != nil {
 		return fmt.Errorf("failed to send authorization data: %w", err)
 	}

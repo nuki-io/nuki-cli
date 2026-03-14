@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"runtime"
 	"time"
@@ -11,6 +12,10 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
+
+// bleTimeout is the maximum time allowed for a BLE command exchange after
+// the device connection has been established.
+const bleTimeout = 30 * time.Second
 
 var (
 	deviceId string
@@ -46,9 +51,9 @@ func mustDeviceId(cmd *cobra.Command, args []string) error {
 }
 
 // withAuthenticatedFlow creates a BLE adapter, establishes an authenticated flow,
-// and calls fn. The device is disconnected after fn returns.
+// and calls fn with a timeout-bounded context. The device is disconnected after fn returns.
 // Errors from setup or fn are logged.
-func withAuthenticatedFlow(fn func(flow *bleflows.Flow) error) {
+func withAuthenticatedFlow(fn func(ctx context.Context, flow *bleflows.Flow) error) {
 	ble, err := nukible.NewNukiBle()
 	if err != nil {
 		cmd.Logger.Error("Failed to enable bluetooth device", "error", err.Error())
@@ -67,16 +72,18 @@ func withAuthenticatedFlow(fn func(flow *bleflows.Flow) error) {
 		return
 	}
 	defer flow.DisconnectDevice()
-	if err := fn(flow); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), bleTimeout)
+	defer cancel()
+	if err := fn(ctx, flow); err != nil {
 		cmd.Logger.Error("Command failed", "error", err.Error())
 	}
 }
 
 // withUnauthenticatedFlow creates a BLE adapter, scans for the device (since it is not yet known),
-// establishes an unauthenticated flow, and calls fn.
+// establishes an unauthenticated flow, and calls fn with a timeout-bounded context.
 // The flow is disconnected after fn returns.
 // Errors from setup or fn are logged.
-func withUnauthenticatedFlow(fn func(flow *bleflows.Flow) error) {
+func withUnauthenticatedFlow(fn func(ctx context.Context, flow *bleflows.Flow) error) {
 	ble, err := nukible.NewNukiBle()
 	if err != nil {
 		cmd.Logger.Error("Failed to enable bluetooth device", "error", err.Error())
@@ -93,7 +100,9 @@ func withUnauthenticatedFlow(fn func(flow *bleflows.Flow) error) {
 		return
 	}
 	defer flow.DisconnectDevice()
-	if err := fn(flow); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), bleTimeout)
+	defer cancel()
+	if err := fn(ctx, flow); err != nil {
 		cmd.Logger.Error("Command failed", "error", err.Error())
 	}
 }

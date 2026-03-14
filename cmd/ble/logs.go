@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/charmbracelet/lipgloss/table"
@@ -14,8 +15,8 @@ var logsCmd = &cobra.Command{
 	Short:   "Get the activity log for a device",
 	PreRunE: mustDeviceId,
 	Run: func(cmd *cobra.Command, args []string) {
-		withAuthenticatedFlow(func(flow *bleflows.Flow) error {
-			res, err := flow.GetLogs(0, 10)
+		withAuthenticatedFlow(func(ctx context.Context, flow *bleflows.Flow) error {
+			res, err := flow.GetLogs(ctx, 0, 10)
 			if err != nil {
 				return fmt.Errorf("failed to read log entries: %w", err)
 			}

@@ -94,10 +94,14 @@ func (a *AuthorizationData5G) GetCommandCode() CommandCode {
 func (a *AuthorizationData5G) GetPayload() []byte {
 	appName := [32]byte{}
 	copy(appName[:], a.Name)
+	var pinBytes []byte
+	if a.SecurityPin != nil {
+		pinBytes = a.SecurityPin.GetPinBytes()
+	}
 	return slices.Concat(
 		a.Id,
 		appName[:],
-		a.SecurityPin.GetPinBytes(),
+		pinBytes,
 	)
 }
 

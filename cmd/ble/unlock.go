@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"context"
+
 	"github.com/nuki-io/nuki-cli/pkg/blecommands"
 	"github.com/nuki-io/nuki-cli/pkg/bleflows"
 	"github.com/spf13/cobra"
@@ -12,8 +14,8 @@ var unlockCmd = &cobra.Command{
 	Short:   "Unlock a device via Bluetooth",
 	PreRunE: mustDeviceId,
 	Run: func(cmd *cobra.Command, args []string) {
-		withAuthenticatedFlow(func(flow *bleflows.Flow) error {
-			return flow.PerformLockOperation(blecommands.Unlock)
+		withAuthenticatedFlow(func(ctx context.Context, flow *bleflows.Flow) error {
+			return flow.PerformLockOperation(ctx, blecommands.Unlock)
 		})
 	},
 }

@@ -1,6 +1,7 @@
 package bleflows
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/nuki-io/nuki-cli/pkg/blecommands"
@@ -85,9 +86,9 @@ func (f *Flow) initializeHandlerWithCrypto() {
 	crypto := blecommands.NewCrypto(f.authCtx.SharedKey)
 	f.handler = blecommands.NewBleHandler(crypto, f.authCtx.AuthId)
 }
-func (f *Flow) getChallenge() ([]byte, error) {
+func (f *Flow) getChallenge(ctx context.Context) ([]byte, error) {
 	msg := f.handler.ToEncryptedMessage(&blecommands.RequestData{CommandIdentifier: blecommands.CommandChallenge}, GetNonce24())
-	raw, err := f.device.WriteUsdio(msg)
+	raw, err := f.device.WriteUsdio(ctx, msg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get challenge from device: %w", err)
 	}

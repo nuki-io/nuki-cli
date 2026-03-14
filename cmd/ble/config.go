@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/charmbracelet/lipgloss/table"
@@ -14,8 +15,8 @@ var configCmd = &cobra.Command{
 	Short:   "Retrieves and display the configuration of the device",
 	PreRunE: mustDeviceId,
 	Run: func(cmd *cobra.Command, args []string) {
-		withAuthenticatedFlow(func(flow *bleflows.Flow) error {
-			cfg, err := flow.GetConfig()
+		withAuthenticatedFlow(func(ctx context.Context, flow *bleflows.Flow) error {
+			cfg, err := flow.GetConfig(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to read config: %w", err)
 			}

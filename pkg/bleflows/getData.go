@@ -1,21 +1,22 @@
 package bleflows
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 
 	"github.com/nuki-io/nuki-cli/pkg/blecommands"
 )
 
-func (f *Flow) GetConfig() (*blecommands.Config, error) {
-	nonce, err := f.getChallenge()
+func (f *Flow) GetConfig(ctx context.Context) (*blecommands.Config, error) {
+	nonce, err := f.getChallenge(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get challenge from device: %w", err)
 	}
 
 	cfg := &blecommands.RequestConfig{Nonce: nonce}
 	msg := f.handler.ToEncryptedMessage(cfg, GetNonce24())
-	raw, err := f.device.WriteUsdio(msg)
+	raw, err := f.device.WriteUsdio(ctx, msg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get config from device: %w", err)
 	}
@@ -27,10 +28,10 @@ func (f *Flow) GetConfig() (*blecommands.Config, error) {
 	return res.(*blecommands.Config), nil
 }
 
-func (f *Flow) RequestData(cmd blecommands.CommandCode) (*blecommands.Response, error) {
+func (f *Flow) RequestData(ctx context.Context, cmd blecommands.CommandCode) (*blecommands.Response, error) {
 	cfg := &blecommands.RequestData{CommandIdentifier: cmd}
 	msg := f.handler.ToEncryptedMessage(cfg, GetNonce24())
-	raw, err := f.device.WriteUsdio(msg)
+	raw, err := f.device.WriteUsdio(ctx, msg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to request data from device: %w", err)
 	}
@@ -42,8 +43,8 @@ func (f *Flow) RequestData(cmd blecommands.CommandCode) (*blecommands.Response, 
 	return &res, nil
 }
 
-func (f *Flow) GetStatus() (*blecommands.KeyturnerStates, error) {
-	res, err := f.RequestData(blecommands.CommandKeyturnerStates)
+func (f *Flow) GetStatus(ctx context.Context) (*blecommands.KeyturnerStates, error) {
+	res, err := f.RequestData(ctx, blecommands.CommandKeyturnerStates)
 	if err != nil {
 		return nil, fmt.Errorf("failed to request keyturner states: %w", err)
 	}
@@ -54,8 +55,8 @@ func (f *Flow) GetStatus() (*blecommands.KeyturnerStates, error) {
 	return state, nil
 }
 
-func (f *Flow) GetLogs(start int, count int) ([]blecommands.LogEntry, error) {
-	nonce, err := f.getChallenge()
+func (f *Flow) GetLogs(ctx context.Context, start int, count int) ([]blecommands.LogEntry, error) {
+	nonce, err := f.getChallenge(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get challenge from device: %w", err)
 	}
@@ -70,7 +71,7 @@ func (f *Flow) GetLogs(start int, count int) ([]blecommands.LogEntry, error) {
 	}
 	msg := f.handler.ToEncryptedMessage(cfg, GetNonce24())
 	entries := []blecommands.LogEntry{}
-	_, err = f.device.WriteUsdioWithCallback(msg,
+	_, err = f.device.WriteUsdioWithCallback(ctx, msg,
 		func(buf []byte, sem chan error) []byte {
 			f.onRequestLogResponse(buf, sem, &entries)
 			return buf

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/charmbracelet/lipgloss"
@@ -15,8 +16,8 @@ var stateCmd = &cobra.Command{
 	Short:   "Gets the current lock state of the device",
 	PreRunE: mustDeviceId,
 	Run: func(cmd *cobra.Command, args []string) {
-		withAuthenticatedFlow(func(flow *bleflows.Flow) error {
-			status, err := flow.GetStatus()
+		withAuthenticatedFlow(func(ctx context.Context, flow *bleflows.Flow) error {
+			status, err := flow.GetStatus(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to get status: %w", err)
 			}

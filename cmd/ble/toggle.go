@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -18,8 +19,8 @@ var toggleCmd = &cobra.Command{
 	Long:    `Depending on the lock's current state, this command either locks or unlocks.`,
 	PreRunE: mustDeviceId,
 	Run: func(cmd *cobra.Command, args []string) {
-		withAuthenticatedFlow(func(flow *bleflows.Flow) error {
-			status, err := flow.GetStatus()
+		withAuthenticatedFlow(func(ctx context.Context, flow *bleflows.Flow) error {
+			status, err := flow.GetStatus(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to get status: %w", err)
 			}
@@ -31,9 +32,9 @@ var toggleCmd = &cobra.Command{
 			}
 			for i := range repeats {
 				if i%2 == startAt {
-					err = flow.PerformLockOperation(blecommands.Unlock)
+					err = flow.PerformLockOperation(ctx, blecommands.Unlock)
 				} else {
-					err = flow.PerformLockOperation(blecommands.Lock)
+					err = flow.PerformLockOperation(ctx, blecommands.Lock)
 				}
 				// TODO: although we received the StatusComplete at this point, we apparently need to wait a bit longer
 				time.Sleep(500 * time.Millisecond)

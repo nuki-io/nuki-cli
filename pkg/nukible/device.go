@@ -1,6 +1,7 @@
 package nukible
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 
@@ -88,19 +89,19 @@ func (n *Device) Disconnect() {
 	n.characteristics = make([]bluetooth.DeviceCharacteristic, 0)
 }
 
-func (n *Device) WritePairing(data []byte) ([]byte, error) {
-	return n.write(n.pairingGdioChar, data, onGdioNotify)
+func (n *Device) WritePairing(ctx context.Context, data []byte) ([]byte, error) {
+	return n.write(ctx, n.pairingGdioChar, data, onGdioNotify)
 }
 
-func (n *Device) WriteUsdio(data []byte) ([]byte, error) {
-	return n.write(n.keyturnerUsdioChar, data, onGdioNotify)
+func (n *Device) WriteUsdio(ctx context.Context, data []byte) ([]byte, error) {
+	return n.write(ctx, n.keyturnerUsdioChar, data, onGdioNotify)
 }
 
-func (n *Device) WriteUsdioWithCallback(data []byte, cb func([]byte, chan error) []byte) ([]byte, error) {
-	return n.write(n.keyturnerUsdioChar, data, cb)
+func (n *Device) WriteUsdioWithCallback(ctx context.Context, data []byte, cb func([]byte, chan error) []byte) ([]byte, error) {
+	return n.write(ctx, n.keyturnerUsdioChar, data, cb)
 }
 
-func (n *Device) write(char bluetooth.DeviceCharacteristic, data []byte, cb func([]byte, chan error) []byte) ([]byte, error) {
+func (n *Device) write(ctx context.Context, char bluetooth.DeviceCharacteristic, data []byte, cb func([]byte, chan error) []byte) ([]byte, error) {
 	sem := make(chan error, 1)
 
 	slog.Debug("Writing bytes to characteristic", "data", fmt.Sprintf("%x", data))
@@ -109,11 +110,14 @@ func (n *Device) write(char bluetooth.DeviceCharacteristic, data []byte, cb func
 	n.osWrite(char, data)
 
 	slog.Debug("Waiting for response...")
-	err := <-sem
-	// disable notifications again - TODO: sensible, or should we just enable it once?
-	char.EnableNotifications(nil)
-
-	return rxData, err
+	select {
+	case err := <-sem:
+		char.EnableNotifications(nil)
+		return rxData, err
+	case <-ctx.Done():
+		char.EnableNotifications(nil)
+		return nil, ctx.Err()
+	}
 }
 
 func onGdioNotify(buf []byte, sem chan error) []byte {

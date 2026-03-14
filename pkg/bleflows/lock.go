@@ -1,14 +1,15 @@
 package bleflows
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 
 	"github.com/nuki-io/nuki-cli/pkg/blecommands"
 )
 
-func (f *Flow) PerformLockOperation(action blecommands.Action) error {
-	nonce, err := f.getChallenge()
+func (f *Flow) PerformLockOperation(ctx context.Context, action blecommands.Action) error {
+	nonce, err := f.getChallenge(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get challenge from device: %w", err)
 	}
@@ -19,7 +20,7 @@ func (f *Flow) PerformLockOperation(action blecommands.Action) error {
 		Nonce:  nonce,
 	}
 	msg := f.handler.ToEncryptedMessage(lock, GetNonce24())
-	_, err = f.device.WriteUsdioWithCallback(msg, f.onLockResponse)
+	_, err = f.device.WriteUsdioWithCallback(ctx, msg, f.onLockResponse)
 	return err
 }
 
