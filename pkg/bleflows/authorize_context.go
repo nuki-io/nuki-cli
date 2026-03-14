@@ -2,12 +2,10 @@ package bleflows
 
 import (
 	"crypto/hmac"
-	crypto_rand "crypto/rand"
+	"crypto/rand"
 	"crypto/sha256"
-	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"math/rand/v2"
 	"slices"
 
 	"github.com/spf13/viper"
@@ -76,7 +74,10 @@ type authorizeContextStorage struct {
 
 func NewAuthorizeContext() *AuthorizeContext {
 	ctx := &AuthorizeContext{}
-	ctx.AppId = binary.LittleEndian.AppendUint32(ctx.AppId, rand.Uint32())
+	ctx.AppId = make([]byte, 4)
+	if _, err := rand.Read(ctx.AppId); err != nil {
+		panic(err)
+	}
 	return ctx
 }
 
@@ -109,7 +110,7 @@ func (ac *AuthorizeContext) GetMessageAuthenticator(parts ...[]byte) []byte {
 }
 
 func (ac *AuthorizeContext) GenerateKeyPair() {
-	pub, priv, err := box.GenerateKey(crypto_rand.Reader)
+	pub, priv, err := box.GenerateKey(rand.Reader)
 	if err != nil {
 		panic(err)
 	}
