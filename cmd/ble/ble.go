@@ -63,7 +63,7 @@ func withAuthenticatedFlow(fn func(ctx context.Context, flow *bleflows.Flow) err
 			return fmt.Errorf("failed to scan for device: %w", err)
 		}
 	}
-	flow, err := bleflows.NewAuthenticatedFlow(ble, deviceId)
+	flow, err := bleflows.NewAuthenticatedFlow(ble, deviceId, viperAuthStore{})
 	if err != nil {
 		return fmt.Errorf("failed to create BLE flow: %w", err)
 	}
@@ -84,7 +84,7 @@ func withUnauthenticatedFlow(fn func(ctx context.Context, flow *bleflows.Flow) e
 	if err = ble.ScanForDevice(deviceId, 10*time.Second); err != nil {
 		return fmt.Errorf("failed to scan for device: %w", err)
 	}
-	flow, err := bleflows.NewUnauthenticatedFlow(ble, deviceId)
+	flow, err := bleflows.NewUnauthenticatedFlow(ble, deviceId, viperAuthStore{})
 	if err != nil {
 		return fmt.Errorf("failed to create BLE flow: %w", err)
 	}

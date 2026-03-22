@@ -13,14 +13,16 @@ type Flow struct {
 	handler *blecommands.BleHandler
 	device  *nukible.Device
 	authCtx *AuthorizeContext
+	store   AuthStore
 	id      string
 }
 
 // NewAuthenticatedFlow creates a new Flow instance for a Nuki device that was already paired.
-func NewAuthenticatedFlow(ble *nukible.NukiBle, id string) (*Flow, error) {
+func NewAuthenticatedFlow(ble *nukible.NukiBle, id string, store AuthStore) (*Flow, error) {
 	f := &Flow{
-		ble: ble,
-		id:  id,
+		ble:   ble,
+		id:    id,
+		store: store,
 	}
 	err := f.loadAuthContext(id)
 	if err != nil {
@@ -39,11 +41,12 @@ func NewAuthenticatedFlow(ble *nukible.NukiBle, id string) (*Flow, error) {
 	return f, nil
 }
 
-// NewAuthenticatedFlow creates a new Flow instance for a Nuki device that was already paired.
-func NewUnauthenticatedFlow(ble *nukible.NukiBle, id string) (*Flow, error) {
+// NewUnauthenticatedFlow creates a new Flow instance for a Nuki device that has not been paired yet.
+func NewUnauthenticatedFlow(ble *nukible.NukiBle, id string, store AuthStore) (*Flow, error) {
 	f := &Flow{
-		ble: ble,
-		id:  id,
+		ble:   ble,
+		id:    id,
+		store: store,
 	}
 	err := f.connect(id)
 	if err != nil {
@@ -71,21 +74,25 @@ func (f *Flow) connect(id string) error {
 	f.device = device
 	return nil
 }
+
 func (f *Flow) loadAuthContext(id string) error {
-	f.authCtx = &AuthorizeContext{}
-	err := f.authCtx.Load(id)
+	ctx, err := f.store.Load(id)
 	if err != nil {
 		return fmt.Errorf("device is not paired yet. %s", err.Error())
 	}
+	f.authCtx = ctx
 	return nil
 }
+
 func (f *Flow) initializeHandler() {
 	f.handler = blecommands.NewBleHandler(nil, nil)
 }
+
 func (f *Flow) initializeHandlerWithCrypto() {
 	crypto := blecommands.NewCrypto(f.authCtx.SharedKey)
 	f.handler = blecommands.NewBleHandler(crypto, f.authCtx.AuthId)
 }
+
 func (f *Flow) getChallenge(ctx context.Context) ([]byte, error) {
 	msg := f.handler.ToEncryptedMessage(&blecommands.RequestData{CommandIdentifier: blecommands.CommandChallenge}, GetNonce24())
 	raw, err := f.device.WriteUsdio(ctx, msg)
@@ -102,7 +109,7 @@ func (f *Flow) getChallenge(ctx context.Context) ([]byte, error) {
 func (f *Flow) UpdateAuthCtxFromConfig(cfg *blecommands.Config) {
 	f.authCtx.Name = cfg.Name
 	f.authCtx.NukiId = cfg.NukiID
-	f.authCtx.Store(f.id)
+	f.store.Store(f.id, f.authCtx)
 }
 
 func (f *Flow) DisconnectDevice() error {
