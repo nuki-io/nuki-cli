@@ -20,6 +20,9 @@ var configCmd = &cobra.Command{
 			if err != nil {
 				return fmt.Errorf("failed to read config: %w", err)
 			}
+			if outputFormat == "json" {
+				return printJSON(cfg)
+			}
 			t := table.New().Rows(
 				[]string{"Nuki ID", fmt.Sprintf("%X", cfg.NukiID)},
 				[]string{"Name", cfg.Name},

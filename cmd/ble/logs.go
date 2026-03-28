@@ -20,6 +20,9 @@ var logsCmd = &cobra.Command{
 			if err != nil {
 				return fmt.Errorf("failed to read log entries: %w", err)
 			}
+			if outputFormat == "json" {
+				return printJSON(res)
+			}
 			t := table.New().Headers("Timestamp", "Log")
 			for _, e := range res {
 				t = t.Row(e.Time.Local().String(), e.String())

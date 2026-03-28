@@ -12,33 +12,33 @@ var _ Response = &Config{}
 
 // Config Command 0x0015
 type Config struct {
-	NukiID           uint32
-	Name             string
-	Latitude         float32
-	Longitude        float32
-	AutoUnlatch      bool
-	PairingEnabled   bool
-	ButtonEnabled    bool
-	LedEnabled       bool
-	LedBrightness    uint8
-	CurrentTime      time.Time
-	TimezoneOffset   int16
-	DstMode          uint8
-	HasFob           bool
-	FobAction1       uint8
-	FobAction2       uint8
-	FobAction3       uint8
-	SingleLock       bool
-	AdvertisingMode  uint8
-	HasKeypad        bool
-	FirmwareVersion  string
-	HardwareRevision string
-	HomeKitStatus    uint8
-	TimezoneID       uint16
-	DeviceType       uint8
-	Capabilities     uint8
-	HasKeypad2       bool
-	MatterStatus     uint8
+	NukiID           uint32    `json:"nukiId"`
+	Name             string    `json:"name"`
+	Latitude         float32   `json:"latitude"`
+	Longitude        float32   `json:"longitude"`
+	AutoUnlatch      bool      `json:"autoUnlatch"`
+	PairingEnabled   bool      `json:"pairingEnabled"`
+	ButtonEnabled    bool      `json:"buttonEnabled"`
+	LedEnabled       bool      `json:"ledEnabled"`
+	LedBrightness    uint8     `json:"ledBrightness"`
+	CurrentTime      time.Time `json:"currentTime"`
+	TimezoneOffset   int16     `json:"timezoneOffset"`
+	DstMode          uint8     `json:"dstMode"`
+	HasFob           bool      `json:"hasFob"`
+	FobAction1       uint8     `json:"fobAction1"`
+	FobAction2       uint8     `json:"fobAction2"`
+	FobAction3       uint8     `json:"fobAction3"`
+	SingleLock       bool      `json:"singleLock"`
+	AdvertisingMode  uint8     `json:"advertisingMode"`
+	HasKeypad        bool      `json:"hasKeypad"`
+	FirmwareVersion  string    `json:"firmwareVersion"`
+	HardwareRevision string    `json:"hardwareRevision"`
+	HomeKitStatus    uint8     `json:"homeKitStatus"`
+	TimezoneID       uint16    `json:"timezoneId"`
+	DeviceType       uint8     `json:"deviceType"`
+	Capabilities     uint8     `json:"capabilities"`
+	HasKeypad2       bool      `json:"hasKeypad2"`
+	MatterStatus     uint8     `json:"matterStatus"`
 }
 
 func (c *Config) GetTimezoneLocation() *time.Location {

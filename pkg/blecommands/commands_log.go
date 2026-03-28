@@ -44,6 +44,8 @@ func (c *RequestLogEntries) GetPayload() []byte {
 //go:generate stringer -type=LogEntryType
 type LogEntryType uint8
 
+func (t LogEntryType) MarshalText() ([]byte, error) { return []byte(t.String()), nil }
+
 const (
 	LoggingEnabledDisabled           LogEntryType = 0x01
 	LogLockAction                    LogEntryType = 0x02
@@ -58,12 +60,12 @@ const (
 var _ Response = &LogEntry{}
 
 type LogEntry struct {
-	Index    uint32
-	Time     time.Time
-	AuthId   uint32
-	AuthName string
-	Type     LogEntryType
-	Data     []byte
+	Index    uint32       `json:"index"`
+	Time     time.Time    `json:"time"`
+	AuthId   uint32       `json:"authId"`
+	AuthName string       `json:"authName"`
+	Type     LogEntryType `json:"type"`
+	Data     []byte       `json:"data"`
 }
 
 func (c *LogEntry) FromMessage(b []byte) error {

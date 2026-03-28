@@ -21,6 +21,9 @@ var stateCmd = &cobra.Command{
 			if err != nil {
 				return fmt.Errorf("failed to get status: %w", err)
 			}
+			if outputFormat == "json" {
+				return printJSON(status)
+			}
 			style := lipgloss.NewStyle().PaddingLeft(1).PaddingRight(1)
 			table := table.New().Headers("Property", "Value").StyleFunc(func(row, col int) lipgloss.Style { return style })
 			table.

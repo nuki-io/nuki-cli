@@ -11,6 +11,8 @@ import (
 //go:generate stringer -type=Action
 type Action uint8
 
+func (a Action) MarshalText() ([]byte, error) { return []byte(a.String()), nil }
+
 const (
 	Unlock Action = 0x01
 	Lock   Action = 0x02
@@ -27,6 +29,8 @@ const (
 
 //go:generate stringer -type=LockState -trimprefix=LockState
 type LockState uint8
+
+func (s LockState) MarshalText() ([]byte, error) { return []byte(s.String()), nil }
 
 const (
 	LockStateUncalibrated    LockState = 0x00
@@ -67,6 +71,8 @@ func (c *LockAction) GetPayload() []byte {
 //go:generate stringer -type=NukiState -trimprefix=NukiState
 type NukiState byte
 
+func (s NukiState) MarshalText() ([]byte, error) { return []byte(s.String()), nil }
+
 const (
 	NukiStateUninitialized   NukiState = 0x00
 	NukiStatePairingMode     NukiState = 0x01
@@ -75,6 +81,8 @@ const (
 )
 
 type Trigger byte
+
+func (t Trigger) MarshalText() ([]byte, error) { return []byte(t.String()), nil }
 
 const (
 	TriggerSystem    Trigger = 0x00 // via bluetooth command
@@ -112,13 +120,13 @@ const (
 )
 
 type RemoteAccessStatus struct {
-	SSEUplinkAvailable       bool // Bit 0: SSE uplink available via BR/WiFi/Thread
-	BridgePaired             bool // Bit 1: Bridge paired
-	SSEConnectionViaWiFi     bool // Bit 2: SSE connection via WiFi
-	SSEConnectionEstablished bool // Bit 3: SSE connection established
-	SSEConnectionViaThread   bool // Bit 4: SSE connection via Thread
-	ThreadSSEUplinkEnabled   bool // Bit 5: Thread SSE uplink enabled (manual setting from user)
-	NAT64AvailableViaThread  bool // Bit 6: NAT64 available via Thread (potential SSE uplink)
+	SSEUplinkAvailable       bool `json:"sseUplinkAvailable"`       // Bit 0: SSE uplink available via BR/WiFi/Thread
+	BridgePaired             bool `json:"bridgePaired"`             // Bit 1: Bridge paired
+	SSEConnectionViaWiFi     bool `json:"sseConnectionViaWifi"`     // Bit 2: SSE connection via WiFi
+	SSEConnectionEstablished bool `json:"sseConnectionEstablished"` // Bit 3: SSE connection established
+	SSEConnectionViaThread   bool `json:"sseConnectionViaThread"`   // Bit 4: SSE connection via Thread
+	ThreadSSEUplinkEnabled   bool `json:"threadSseUplinkEnabled"`   // Bit 5: Thread SSE uplink enabled (manual setting from user)
+	NAT64AvailableViaThread  bool `json:"nat64AvailableViaThread"`  // Bit 6: NAT64 available via Thread (potential SSE uplink)
 }
 
 func (r RemoteAccessStatus) String() string {
@@ -160,10 +168,10 @@ func newRemoteAccessStatus(b byte) RemoteAccessStatus {
 }
 
 type AccessoryStatus struct {
-	KeypadSupported           bool // Bit 0: Feature supported by Keypad
-	KeypadBatteryCritical     bool // Bit 1: Keypad Battery State Critical
-	DoorSensorSupported       bool // Bit 2: Feature supported by Door Sensor
-	DoorSensorBatteryCritical bool // Bit 3: Door Sensor Battery State Critical
+	KeypadSupported           bool `json:"keypadSupported"`           // Bit 0: Feature supported by Keypad
+	KeypadBatteryCritical     bool `json:"keypadBatteryCritical"`     // Bit 1: Keypad Battery State Critical
+	DoorSensorSupported       bool `json:"doorSensorSupported"`       // Bit 2: Feature supported by Door Sensor
+	DoorSensorBatteryCritical bool `json:"doorSensorBatteryCritical"` // Bit 3: Door Sensor Battery State Critical
 }
 
 func newAccessoryStatus(b byte) AccessoryStatus {
@@ -184,8 +192,8 @@ const (
 )
 
 type ConnectionStrength struct {
-	RSSI   int8
-	Status ConnectionStrengthStatus
+	RSSI   int8                     `json:"rssi"`
+	Status ConnectionStrengthStatus `json:"status"`
 }
 
 func newConnectionStrength(b byte) ConnectionStrength {
@@ -218,9 +226,9 @@ const (
 )
 
 type WifiConnectionStatus struct {
-	WifiStatus  WifiStatus // Bits 0-1: WiFi status
-	SseStatus   SseStatus  // Bits 2-3: SSE status
-	WifiQuality byte       // Bits 4-7: WiFi quality (0x00 - 0x0F)
+	WifiStatus  WifiStatus `json:"wifiStatus"`  // Bits 0-1: WiFi status
+	SseStatus   SseStatus  `json:"sseStatus"`   // Bits 2-3: SSE status
+	WifiQuality byte       `json:"wifiQuality"` // Bits 4-7: WiFi quality (0x00 - 0x0F)
 }
 
 func newWifiConnectionStatus(b byte) WifiConnectionStatus {
@@ -248,8 +256,8 @@ const (
 )
 
 type MqttConnectionStatus struct {
-	MqttStatus MqttStatus
-	MqttUplink MqttUplink
+	MqttStatus MqttStatus `json:"mqttStatus"`
+	MqttUplink MqttUplink `json:"mqttUplink"`
 }
 
 func newMqttConnectionStatus(b byte) MqttConnectionStatus {
@@ -269,10 +277,10 @@ const (
 )
 
 type ThreadConnectionStatus struct {
-	ThreadStatus              ThreadStatus
-	SseStatus                 SseStatus
-	MatterCommissioningActive bool
-	WifiSuspended             bool
+	ThreadStatus              ThreadStatus `json:"threadStatus"`
+	SseStatus                 SseStatus    `json:"sseStatus"`
+	MatterCommissioningActive bool         `json:"matterCommissioningActive"`
+	WifiSuspended             bool         `json:"wifiSuspended"`
 }
 
 func newThreadConnectionStatus(b byte) ThreadConnectionStatus {
@@ -287,29 +295,29 @@ func newThreadConnectionStatus(b byte) ThreadConnectionStatus {
 var _ Response = &KeyturnerStates{}
 
 type KeyturnerStates struct {
-	NukiState            NukiState
-	LockState            LockState
-	Trigger              Trigger
-	CurrentTime          time.Time
-	TimezoneOffset       int16
-	BatteryStateCritical bool
-	Charging             bool
-	BatteryPercentage    int
+	NukiState            NukiState `json:"nukiState"`
+	LockState            LockState `json:"lockState"`
+	Trigger              Trigger   `json:"trigger"`
+	CurrentTime          time.Time `json:"currentTime"`
+	TimezoneOffset       int16     `json:"timezoneOffset"`
+	BatteryStateCritical bool      `json:"batteryStateCritical"`
+	Charging             bool      `json:"charging"`
+	BatteryPercentage    int       `json:"batteryPercentage"`
 
-	ConfigUpdateCount              byte
-	LockNGoTimer                   byte
-	LastLockAction                 LockState
-	LastLockActionTrigger          Trigger
-	LastLockActionCompletionStatus StatusCode
-	DoorSensorState                DoorSensorState
-	NightmodeActive                bool
-	AccessoryBatteryState          AccessoryStatus
-	RemoteAccessStatus             RemoteAccessStatus
-	BleConnectionStrength          ConnectionStrength
-	WifiConnectionStrength         ConnectionStrength
-	WifiConnectionStatus           WifiConnectionStatus
-	MqttConnectionStatus           MqttConnectionStatus
-	ThreadConnectionStatus         ThreadConnectionStatus
+	ConfigUpdateCount              byte                   `json:"configUpdateCount"`
+	LockNGoTimer                   byte                   `json:"lockNGoTimer"`
+	LastLockAction                 LockState              `json:"lastLockAction"`
+	LastLockActionTrigger          Trigger                `json:"lastLockActionTrigger"`
+	LastLockActionCompletionStatus StatusCode             `json:"lastLockActionCompletionStatus"`
+	DoorSensorState                DoorSensorState        `json:"doorSensorState"`
+	NightmodeActive                bool                   `json:"nightmodeActive"`
+	AccessoryBatteryState          AccessoryStatus        `json:"accessoryBatteryState"`
+	RemoteAccessStatus             RemoteAccessStatus     `json:"remoteAccessStatus"`
+	BleConnectionStrength          ConnectionStrength     `json:"bleConnectionStrength"`
+	WifiConnectionStrength         ConnectionStrength     `json:"wifiConnectionStrength"`
+	WifiConnectionStatus           WifiConnectionStatus   `json:"wifiConnectionStatus"`
+	MqttConnectionStatus           MqttConnectionStatus   `json:"mqttConnectionStatus"`
+	ThreadConnectionStatus         ThreadConnectionStatus `json:"threadConnectionStatus"`
 }
 
 func (c *KeyturnerStates) GetCommandCode() CommandCode {

@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
 	"runtime"
 	"time"
 
@@ -18,7 +20,8 @@ import (
 const bleTimeout = 30 * time.Second
 
 var (
-	deviceId string
+	deviceId     string
+	outputFormat string
 )
 
 // bleCmd represents the bleCmd command
@@ -33,7 +36,15 @@ var bleCmd = &cobra.Command{
 func init() {
 	parentcmd.RootCmd.AddCommand(bleCmd)
 	bleCmd.PersistentFlags().StringVarP(&deviceId, "device-id", "d", "", "The device to use. If not set, the device set by set-context command is used. This is ignored for some commands.")
+	bleCmd.PersistentFlags().StringVar(&outputFormat, "format", "table", "Output format: table or json")
 	// viper.BindPFlag("activeContext", bleCmd.PersistentFlags().Lookup("device-id"))
+}
+
+// printJSON writes v as indented JSON to stdout.
+func printJSON(v any) error {
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	return enc.Encode(v)
 }
 
 func preRun(cmd *cobra.Command, args []string) {

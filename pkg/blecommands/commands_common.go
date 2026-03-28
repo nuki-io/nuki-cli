@@ -22,6 +22,8 @@ type Response interface {
 //go:generate stringer -type=StatusCode -trimprefix=Status
 type StatusCode uint8
 
+func (s StatusCode) MarshalText() ([]byte, error) { return []byte(s.String()), nil }
+
 const (
 	StatusComplete StatusCode = 0x00
 	StatusAccepted StatusCode = 0x01

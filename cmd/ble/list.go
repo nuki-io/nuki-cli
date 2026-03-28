@@ -15,7 +15,15 @@ var listCmd = &cobra.Command{
 	Short:   "List all authorized devices",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		auths := viper.GetStringMap("authorizations")
-		devices := make([][]string, 0, len(auths))
+
+		type entry struct {
+			Name     string `json:"name"`
+			DeviceID string `json:"deviceId"`
+			AppID    string `json:"appId"`
+			AuthID   string `json:"authId"`
+		}
+
+		entries := make([]entry, 0, len(auths))
 		for k, v := range auths {
 			values, ok := v.(map[string]any)
 			if !ok {
@@ -24,9 +32,18 @@ var listCmd = &cobra.Command{
 			name, _ := values["name"].(string)
 			appid, _ := values["appid"].(string)
 			authid, _ := values["authid"].(string)
-			devices = append(devices, []string{name, k, appid, authid})
+			entries = append(entries, entry{Name: name, DeviceID: k, AppID: appid, AuthID: authid})
 		}
-		t := table.New().Rows(devices...).Headers("Name", "Device ID", "App ID", "Auth ID")
+
+		if outputFormat == "json" {
+			return printJSON(entries)
+		}
+
+		rows := make([][]string, len(entries))
+		for i, e := range entries {
+			rows[i] = []string{e.Name, e.DeviceID, e.AppID, e.AuthID}
+		}
+		t := table.New().Rows(rows...).Headers("Name", "Device ID", "App ID", "Auth ID")
 		fmt.Println(t)
 		return nil
 	},
