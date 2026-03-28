@@ -70,31 +70,28 @@ func (f *Flow) GetLogs(ctx context.Context, start int, count int) ([]blecommands
 		SecurityPin: blecommands.NewPin(f.authCtx.Pin),
 	}
 	msg := f.handler.ToEncryptedMessage(cfg, GetNonce24())
-	entries := []blecommands.LogEntry{}
-	_, err = f.device.WriteUsdioWithCallback(ctx, msg,
-		func(buf []byte, sem chan error) []byte {
-			f.onRequestLogResponse(buf, sem, &entries)
-			return buf
-		})
-	return entries, err
-}
+	ch, stop := f.device.WriteUsdioStream(ctx, msg)
+	defer stop()
 
-func (f *Flow) onRequestLogResponse(buf []byte, sem chan error, entries *[]blecommands.LogEntry) {
-	slog.Debug("Received response", "buf", fmt.Sprintf("%x", buf))
-	res, err := f.handler.FromEncryptedDeviceResponse(buf)
-	if err != nil {
-		slog.Error("Failed to decrypt response", "err", err)
-		sem <- err
-		return
-	}
-	slog.Debug("Received log entry response", "cmd", res.GetCommandCode(), "payload", res)
-	if res.GetCommandCode() == blecommands.CommandLogEntry {
-		entry, ok := res.(*blecommands.LogEntry)
-		if ok {
-			*entries = append(*entries, *entry)
+	var entries []blecommands.LogEntry
+	for {
+		select {
+		case buf := <-ch:
+			res, err := f.handler.FromEncryptedDeviceResponse(buf)
+			if err != nil {
+				return nil, fmt.Errorf("failed to decrypt log response: %w", err)
+			}
+			slog.Debug("Received log entry response", "cmd", res.GetCommandCode(), "payload", res)
+			switch r := res.(type) {
+			case *blecommands.LogEntry:
+				entries = append(entries, *r)
+			case *blecommands.Status:
+				if r.Status == blecommands.StatusComplete {
+					return entries, nil
+				}
+			}
+		case <-ctx.Done():
+			return nil, ctx.Err()
 		}
-	}
-	if s, ok := res.(*blecommands.Status); ok && s.Status == blecommands.StatusComplete {
-		sem <- nil
 	}
 }

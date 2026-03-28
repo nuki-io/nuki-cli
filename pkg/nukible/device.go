@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync/atomic"
 
 	"tinygo.org/x/bluetooth"
 )
@@ -89,39 +90,65 @@ func (n *Device) Disconnect() {
 	n.characteristics = make([]bluetooth.DeviceCharacteristic, 0)
 }
 
-func (n *Device) WritePairing(ctx context.Context, data []byte) ([]byte, error) {
-	return n.write(ctx, n.pairingGdioChar, data, onGdioNotify)
-}
+// stream enables notifications on char, writes data, and returns a channel that
+// receives each incoming BLE notification packet and a stop function. The caller
+// must call stop() when done to disable notifications. If the receive buffer
+// (capacity 32) fills up, excess packets are dropped with a warning.
+func (n *Device) stream(char bluetooth.DeviceCharacteristic, data []byte) (<-chan []byte, func()) {
+	ch := make(chan []byte, 32)
+	var stopped atomic.Bool
 
-func (n *Device) WriteUsdio(ctx context.Context, data []byte) ([]byte, error) {
-	return n.write(ctx, n.keyturnerUsdioChar, data, onGdioNotify)
-}
-
-func (n *Device) WriteUsdioWithCallback(ctx context.Context, data []byte, cb func([]byte, chan error) []byte) ([]byte, error) {
-	return n.write(ctx, n.keyturnerUsdioChar, data, cb)
-}
-
-func (n *Device) write(ctx context.Context, char bluetooth.DeviceCharacteristic, data []byte, cb func([]byte, chan error) []byte) ([]byte, error) {
-	sem := make(chan error, 1)
+	char.EnableNotifications(func(buf []byte) {
+		if stopped.Load() {
+			return
+		}
+		copied := make([]byte, len(buf))
+		copy(copied, buf)
+		select {
+		case ch <- copied:
+		default:
+			slog.Warn("BLE notification dropped: receive buffer full")
+		}
+	})
 
 	slog.Debug("Writing bytes to characteristic", "data", fmt.Sprintf("%x", data))
-	rxData := make([]byte, 0)
-	char.EnableNotifications(func(buf []byte) { rxData = cb(buf, sem) })
 	n.osWrite(char, data)
 
+	stop := func() {
+		stopped.Store(true)
+		char.EnableNotifications(nil)
+	}
+	return ch, stop
+}
+
+// readOne reads the first packet from ch, calls stop, and returns the packet.
+// Used for single-response BLE commands.
+func readOne(ctx context.Context, ch <-chan []byte, stop func()) ([]byte, error) {
+	defer stop()
 	slog.Debug("Waiting for response...")
 	select {
-	case err := <-sem:
-		char.EnableNotifications(nil)
-		return rxData, err
+	case buf := <-ch:
+		slog.Debug("Received response", "buf", fmt.Sprintf("%x", buf))
+		return buf, nil
 	case <-ctx.Done():
-		char.EnableNotifications(nil)
 		return nil, ctx.Err()
 	}
 }
 
-func onGdioNotify(buf []byte, sem chan error) []byte {
-	slog.Debug("Received response", "buf", fmt.Sprintf("%x", buf))
-	sem <- nil
-	return buf
+func (n *Device) WritePairing(ctx context.Context, data []byte) ([]byte, error) {
+	ch, stop := n.stream(n.pairingGdioChar, data)
+	return readOne(ctx, ch, stop)
+}
+
+func (n *Device) WriteUsdio(ctx context.Context, data []byte) ([]byte, error) {
+	ch, stop := n.stream(n.keyturnerUsdioChar, data)
+	return readOne(ctx, ch, stop)
+}
+
+// WriteUsdioStream sends data and returns a channel of raw BLE notification packets
+// and a stop function. The caller consumes packets until the protocol signals
+// completion (StatusComplete), then calls stop(). The context is not monitored
+// here — callers should select on ctx.Done() alongside the channel.
+func (n *Device) WriteUsdioStream(ctx context.Context, data []byte) (<-chan []byte, func()) {
+	return n.stream(n.keyturnerUsdioChar, data)
 }

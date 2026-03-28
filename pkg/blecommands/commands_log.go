@@ -101,5 +101,5 @@ func (c *LogEntry) String() string {
 	if c.Type == LogFirmwareUpdate {
 		return fmt.Sprintf("Firmware Update (%d.%d.%d)", c.Data[0], c.Data[1], c.Data[2])
 	}
-	return fmt.Sprintf("%s by %s (ID: %d) at %s", c.Type.String(), c.AuthName, c.AuthId, c.Time.Format(time.RFC3339))
+	return fmt.Sprintf("%s by %s (ID: %d)", c.Type.String(), c.AuthName, c.AuthId)
 }

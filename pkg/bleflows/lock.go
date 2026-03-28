@@ -20,21 +20,22 @@ func (f *Flow) PerformLockOperation(ctx context.Context, action blecommands.Acti
 		Nonce:  nonce,
 	}
 	msg := f.handler.ToEncryptedMessage(lock, GetNonce24())
-	_, err = f.device.WriteUsdioWithCallback(ctx, msg, f.onLockResponse)
-	return err
-}
+	ch, stop := f.device.WriteUsdioStream(ctx, msg)
+	defer stop()
 
-func (f *Flow) onLockResponse(buf []byte, sem chan error) []byte {
-	slog.Debug("Received response", "buf", fmt.Sprintf("%x", buf))
-	res, err := f.handler.FromEncryptedDeviceResponse(buf)
-	if err != nil {
-		slog.Error("Failed to decrypt response", "err", err)
-		sem <- err
-		return buf
+	for {
+		select {
+		case buf := <-ch:
+			res, err := f.handler.FromEncryptedDeviceResponse(buf)
+			if err != nil {
+				return fmt.Errorf("failed to decrypt lock response: %w", err)
+			}
+			slog.Info("Received lock action response", "cmd", res.GetCommandCode(), "payload", res)
+			if s, ok := res.(*blecommands.Status); ok && s.Status == blecommands.StatusComplete {
+				return nil
+			}
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
-	slog.Info("Received lock action response", "cmd", res.GetCommandCode(), "payload", res)
-	if s, ok := res.(*blecommands.Status); ok && s.Status == blecommands.StatusComplete {
-		sem <- nil
-	}
-	return buf
 }
