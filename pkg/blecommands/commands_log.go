@@ -22,7 +22,7 @@ type RequestLogEntries struct {
 	StartIndex  uint32
 	Count       uint16
 	SortOrder   LogSortOrder
-	TotalCount  byte
+	TotalCount  bool
 	Nonce       []byte
 	SecurityPin Pin
 }
@@ -35,7 +35,7 @@ func (c *RequestLogEntries) GetPayload() []byte {
 	return slices.Concat(
 		binary.LittleEndian.AppendUint32(nil, c.StartIndex),
 		binary.LittleEndian.AppendUint16(nil, c.Count),
-		[]byte{byte(c.SortOrder), c.TotalCount},
+		[]byte{byte(c.SortOrder), boolToByte(c.TotalCount)},
 		c.Nonce,
 		c.SecurityPin.GetPinBytes(),
 	)
@@ -56,6 +56,8 @@ const (
 	DoorSensorLoggingEnabledDisabled LogEntryType = 0x07
 	LogFirmwareUpdate                LogEntryType = 0x0A
 )
+
+// LogEntry (0x0032)
 
 var _ Response = &LogEntry{}
 
@@ -104,4 +106,44 @@ func (c *LogEntry) String() string {
 		return fmt.Sprintf("Firmware Update (%d.%d.%d)", c.Data[0], c.Data[1], c.Data[2])
 	}
 	return fmt.Sprintf("%s by %s (ID: %d)", c.Type.String(), c.AuthName, c.AuthId)
+}
+
+// LogEntryCount (0x0033)
+
+var _ Response = &LogEntryCount{}
+
+type LogEntryCount struct {
+	LoggingEnabled           bool   `json:"loggingEnabled"`
+	Count                    uint16 `json:"count"`
+	DoorSensorEnabled        bool   `json:"doorSensorEnabled"`
+	DoorSensorLoggingEnabled bool   `json:"doorSensorLoggingEnabled"`
+}
+
+func (c *LogEntryCount) GetCommandCode() CommandCode { return CommandLogEntryCount }
+func (c *LogEntryCount) FromMessage(b []byte) error {
+	if len(b) < 4 {
+		return fmt.Errorf("log entry count too short: %d bytes", len(b))
+	}
+	c.LoggingEnabled = b[0] != 0
+	c.Count = binary.LittleEndian.Uint16(b[1:3])
+	c.DoorSensorEnabled = b[3] != 0
+	if len(b) > 4 {
+		c.DoorSensorLoggingEnabled = b[4] != 0
+	}
+	return nil
+}
+
+// EnableLogging (0x0034)
+
+var _ Request = &EnableLogging{}
+
+type EnableLogging struct {
+	Enabled     bool
+	Nonce       []byte
+	SecurityPin Pin
+}
+
+func (c *EnableLogging) GetCommandCode() CommandCode { return CommandEnableLogging }
+func (c *EnableLogging) GetPayload() []byte {
+	return slices.Concat([]byte{boolToByte(c.Enabled)}, c.Nonce, c.SecurityPin.GetPinBytes())
 }

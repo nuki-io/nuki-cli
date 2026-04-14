@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
 	parentcmd "github.com/nuki-io/nuki-cli/cmd"
 	"github.com/nuki-io/nuki-cli/pkg/bleflows"
 	"github.com/nuki-io/nuki-cli/pkg/nukible"
@@ -22,6 +23,11 @@ const bleTimeout = 30 * time.Second
 var (
 	deviceId     string
 	outputFormat string
+
+	emptyStyle  = lipgloss.NewStyle()
+	styleCenter = lipgloss.NewStyle().AlignHorizontal(lipgloss.Center)
+	colorRed    = lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Render
+	colorGreen  = lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Render
 )
 
 // bleCmd represents the bleCmd command
