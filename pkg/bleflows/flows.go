@@ -113,6 +113,11 @@ func (f *Flow) UpdateAuthCtxFromConfig(cfg *blecommands.Config) {
 	f.store.Store(f.id, f.authCtx)
 }
 
+// SetResponseRecorder passes every raw response payload received by this flow to fn.
+func (f *Flow) SetResponseRecorder(fn func(cmd blecommands.CommandCode, payload []byte)) {
+	f.handler.SetRecorder(fn)
+}
+
 func (f *Flow) DisconnectDevice() error {
 	if f.device == nil {
 		return fmt.Errorf("no device connected")

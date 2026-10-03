@@ -10,14 +10,26 @@ import (
 var authId5GPairing = []byte{0x7F, 0xFF, 0xFF, 0xFF}
 
 type BleHandler struct {
-	crypto Crypto
-	authId []byte
+	crypto   Crypto
+	authId   []byte
+	recorder func(cmd CommandCode, payload []byte)
 }
 
 func NewBleHandler(crypto Crypto, authId []byte) *BleHandler {
 	return &BleHandler{
 		crypto: crypto,
 		authId: authId,
+	}
+}
+
+// SetRecorder registers fn to receive every CRC-valid response payload before it is parsed.
+func (h *BleHandler) SetRecorder(fn func(cmd CommandCode, payload []byte)) {
+	h.recorder = fn
+}
+
+func (h *BleHandler) record(cmd CommandCode, payload []byte) {
+	if h.recorder != nil {
+		h.recorder(cmd, slices.Clone(payload))
 	}
 }
 
@@ -70,20 +82,8 @@ func (h *BleHandler) FromDeviceResponse(b []byte) (Command, error) {
 	if crcReceived != crcExpect {
 		return nil, fmt.Errorf("CRC mismatch: expected %x, got %x", crcExpect, crcReceived)
 	}
-	cmdImpl, ok := responseImplMap[cmdCode]
-	if !ok {
-		return nil, fmt.Errorf("unhandled response command code: %x, name: %s", int(cmdCode), cmdCode)
-	}
-	cmd := cmdImpl()
-	err := cmd.FromMessage(payload)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse command: %w", err)
-	}
-	if e, ok := cmd.(*ErrorReport); ok {
-		return cmd, fmt.Errorf("%s, command: %s", e.Error, e.CommandIdentifier)
-	}
-
-	return cmd, nil
+	h.record(cmdCode, payload)
+	return ParseResponse(cmdCode, payload)
 }
 
 func (h *BleHandler) FromEncryptedDeviceResponse(b []byte) (Response, error) {
@@ -116,12 +116,19 @@ func (h *BleHandler) FromEncryptedDeviceResponse(b []byte) (Response, error) {
 	if crcReceived != crcExpect {
 		return nil, fmt.Errorf("CRC mismatch: expected %x, got %x", crcExpect, crcReceived)
 	}
+	h.record(cmdCode, payload)
+	return ParseResponse(cmdCode, payload)
+}
+
+// ParseResponse decodes a decrypted, CRC-checked payload into its typed response.
+// An ErrorReport is returned together with a non-nil error.
+func ParseResponse(cmdCode CommandCode, payload []byte) (Response, error) {
 	cmdImpl, ok := responseImplMap[cmdCode]
 	if !ok {
 		return nil, fmt.Errorf("unhandled response command code: %x, name: %s", int(cmdCode), cmdCode)
 	}
 	cmd := cmdImpl()
-	err = cmd.FromMessage(payload)
+	err := cmd.FromMessage(payload)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse command: %w", err)
 	}
