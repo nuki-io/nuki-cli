@@ -42,7 +42,6 @@ var toggleCmd = &cobra.Command{
 			return err
 		})
 	},
-
 }
 
 func init() {

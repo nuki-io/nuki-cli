@@ -47,6 +47,28 @@ const (
 	LockStateUndefined       LockState = 0xFF
 )
 
+// SimpleLockAction (0x0100)
+
+var _ Request = &SimpleLockAction{}
+
+type SimpleLockAction struct {
+	Action     Action
+	NameSuffix string // optional suffix appended to the log entry, max 20 chars
+	NonceNK    []byte // 32-byte random nonce
+}
+
+func (c *SimpleLockAction) GetCommandCode() CommandCode { return CommandSimpleLockAction }
+func (c *SimpleLockAction) GetPayload() []byte {
+	b := []byte{byte(c.Action)}
+	// if c.NameSuffix != "" {
+	suffix := [20]byte{}
+	copy(suffix[:], c.NameSuffix)
+	b = append(b, suffix[:]...)
+	// }
+	b = append(b, c.NonceNK...)
+	return b
+}
+
 var _ Request = &LockAction{}
 
 type LockAction struct {

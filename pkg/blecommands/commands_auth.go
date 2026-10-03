@@ -45,13 +45,16 @@ func (c *AuthorizationAuthenticator) GetPayload() []byte {
 	return c.Authenticator
 }
 
+//go:generate stringer -type=AuthorizationType -trimprefix=AuthorizationType
 type AuthorizationType uint8
 
 const (
-	AuthorizationTypeApp    AuthorizationType = 0x00 // App
-	AuthorizationTypeBridge AuthorizationType = 0x01 // Bridge
-	AuthorizationTypeFob    AuthorizationType = 0x02 // Fob
-	AuthorizationTypeKeypad AuthorizationType = 0x03 // Keypad
+	AuthorizationTypeApp        AuthorizationType = 0x00
+	AuthorizationTypeBridge     AuthorizationType = 0x01
+	AuthorizationTypeFob        AuthorizationType = 0x02
+	AuthorizationTypeKeypad     AuthorizationType = 0x03
+	AuthorizationTypeDoorsensor AuthorizationType = 0x04
+	AuthorizationTypeKeypad2    AuthorizationType = 0x05
 )
 
 var _ Request = &AuthorizationData{}

@@ -53,7 +53,6 @@ var stateCmd = &cobra.Command{
 			return nil
 		})
 	},
-
 }
 
 func init() {

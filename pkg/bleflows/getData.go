@@ -3,7 +3,6 @@ package bleflows
 import (
 	"context"
 	"fmt"
-	"log/slog"
 
 	"github.com/nuki-io/nuki-cli/pkg/blecommands"
 )
@@ -55,43 +54,36 @@ func (f *Flow) GetStatus(ctx context.Context) (*blecommands.KeyturnerStates, err
 	return state, nil
 }
 
-func (f *Flow) GetLogs(ctx context.Context, start int, count int) ([]blecommands.LogEntry, error) {
+func (f *Flow) GetBatteryReport(ctx context.Context) (*blecommands.BatteryReport, error) {
+	res, err := f.RequestData(ctx, blecommands.CommandBatteryReport)
+	if err != nil {
+		return nil, fmt.Errorf("failed to request battery report: %w", err)
+	}
+	report, ok := (*res).(*blecommands.BatteryReport)
+	if !ok {
+		return nil, fmt.Errorf("unexpected response type for battery report")
+	}
+	return report, nil
+}
+
+func (f *Flow) GetAdvancedConfig(ctx context.Context) (*blecommands.AdvancedConfig, error) {
 	nonce, err := f.getChallenge(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get challenge from device: %w", err)
+		return nil, fmt.Errorf("failed to get challenge: %w", err)
 	}
-
-	cfg := &blecommands.RequestLogEntries{
-		StartIndex:  uint32(start),
-		Count:       uint16(count),
-		Nonce:       nonce,
-		SortOrder:   blecommands.LogSortOrderDescending,
-		TotalCount:  0x00,
-		SecurityPin: blecommands.NewPin(f.authCtx.Pin),
+	req := &blecommands.RequestAdvancedConfig{Nonce: nonce}
+	msg := f.handler.ToEncryptedMessage(req, GetNonce24())
+	raw, err := f.device.WriteUsdio(ctx, msg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get advanced config: %w", err)
 	}
-	msg := f.handler.ToEncryptedMessage(cfg, GetNonce24())
-	ch, stop := f.device.WriteUsdioStream(ctx, msg)
-	defer stop()
-
-	var entries []blecommands.LogEntry
-	for {
-		select {
-		case buf := <-ch:
-			res, err := f.handler.FromEncryptedDeviceResponse(buf)
-			if err != nil {
-				return nil, fmt.Errorf("failed to decrypt log response: %w", err)
-			}
-			slog.Debug("Received log entry response", "cmd", res.GetCommandCode(), "payload", res)
-			switch r := res.(type) {
-			case *blecommands.LogEntry:
-				entries = append(entries, *r)
-			case *blecommands.Status:
-				if r.Status == blecommands.StatusComplete {
-					return entries, nil
-				}
-			}
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		}
+	res, err := f.handler.FromEncryptedDeviceResponse(raw)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse advanced config: %w", err)
 	}
+	cfg, ok := res.(*blecommands.AdvancedConfig)
+	if !ok {
+		return nil, fmt.Errorf("unexpected response type for advanced config")
+	}
+	return cfg, nil
 }

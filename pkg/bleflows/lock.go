@@ -8,6 +8,15 @@ import (
 	"github.com/nuki-io/nuki-cli/pkg/blecommands"
 )
 
+// PerformSimpleLockAction sends a SimpleLockAction (0x0100) which does not require
+// a challenge PIN – only the shared encryption key is needed.
+func (f *Flow) PerformSimpleLockAction(ctx context.Context, action blecommands.Action) error {
+	return f.performSimpleOp(ctx, &blecommands.SimpleLockAction{
+		Action:  action,
+		NonceNK: GetNonce32(),
+	})
+}
+
 func (f *Flow) PerformLockOperation(ctx context.Context, action blecommands.Action) error {
 	nonce, err := f.getChallenge(ctx)
 	if err != nil {

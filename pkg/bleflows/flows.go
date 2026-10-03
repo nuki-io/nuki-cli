@@ -3,6 +3,7 @@ package bleflows
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/nuki-io/nuki-cli/pkg/blecommands"
 	"github.com/nuki-io/nuki-cli/pkg/nukible"
@@ -119,4 +120,28 @@ func (f *Flow) DisconnectDevice() error {
 	f.device.Disconnect()
 	f.device = nil
 	return nil
+}
+
+// performSimpleOp sends a command that requires a challenge+PIN and waits for StatusComplete.
+// The caller provides an already-built request (with nonce and pin already set).
+func (f *Flow) performSimpleOp(ctx context.Context, req blecommands.Request) error {
+	msg := f.handler.ToEncryptedMessage(req, GetNonce24())
+	ch, stop := f.device.WriteUsdioStream(ctx, msg)
+	defer stop()
+
+	for {
+		select {
+		case buf := <-ch:
+			res, err := f.handler.FromEncryptedDeviceResponse(buf)
+			if err != nil {
+				return fmt.Errorf("failed to decrypt response: %w", err)
+			}
+			slog.Debug("Received response", "cmd", res.GetCommandCode())
+			if s, ok := res.(*blecommands.Status); ok && s.Status == blecommands.StatusComplete {
+				return nil
+			}
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
 }
