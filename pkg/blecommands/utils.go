@@ -2,6 +2,7 @@ package blecommands
 
 import (
 	"encoding/binary"
+	"slices"
 	"time"
 )
 
@@ -28,7 +29,8 @@ func toNukiTime(t time.Time) []byte {
 }
 
 func fromNukiTime(b []byte, tz *time.Location) time.Time {
-	if len(b) != 7 {
+	// The device sends all zeros for unset dates, e.g. an authorization that was never used.
+	if len(b) != 7 || slices.Equal(b, make([]byte, 7)) {
 		return time.Time{}
 	}
 	year := int(binary.LittleEndian.Uint16(b[0:2]))

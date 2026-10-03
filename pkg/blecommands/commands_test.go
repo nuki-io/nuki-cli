@@ -1,7 +1,9 @@
 package blecommands_test
 
 import (
+	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/nuki-io/nuki-cli/pkg/blecommands"
 	"github.com/stretchr/testify/require"
@@ -39,4 +41,16 @@ func TestEncryptedRequestChallenge(t *testing.T) {
 		0x0D, 0x47,
 	}
 	require.Equal(t, want, msg)
+}
+
+func TestAuthorizationEntryUnsetLastActive(t *testing.T) {
+	b := make([]byte, 56)
+	copy(b[39:46], []byte{0xEA, 0x07, 0x05, 0x06, 0x0E, 0x36, 0x2A}) // created 2026-05-06 14:54:42, never active
+	e := &blecommands.AuthorizationEntry{}
+	require.NoError(t, e.FromMessage(b))
+
+	require.Equal(t, time.Date(2026, 5, 6, 14, 54, 42, 0, time.UTC), e.DateCreated)
+	require.True(t, e.DateLastActive.IsZero())
+	_, err := json.Marshal(e)
+	require.NoError(t, err)
 }
