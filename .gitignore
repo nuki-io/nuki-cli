@@ -16,3 +16,7 @@ nukictl
 vendor/
 
 .DS_Store
+
+# Responses recorded from a real device by make hwtest. They contain the device
+# name, location and authorization names, so review before committing any.
+pkg/blecommands/testdata/recorded/
