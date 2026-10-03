@@ -10,6 +10,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	parentcmd "github.com/nuki-io/nuki-cli/cmd"
+	"github.com/nuki-io/nuki-cli/internal/authstore"
 	"github.com/nuki-io/nuki-cli/pkg/bleflows"
 	"github.com/nuki-io/nuki-cli/pkg/nukible"
 	"github.com/spf13/cobra"
@@ -80,7 +81,7 @@ func withAuthenticatedFlow(fn func(ctx context.Context, flow *bleflows.Flow) err
 			return fmt.Errorf("failed to scan for device: %w", err)
 		}
 	}
-	flow, err := bleflows.NewAuthenticatedFlow(ble, deviceId, viperAuthStore{})
+	flow, err := bleflows.NewAuthenticatedFlow(ble, deviceId, authstore.New(viper.GetViper()))
 	if err != nil {
 		return fmt.Errorf("failed to create BLE flow: %w", err)
 	}
@@ -101,7 +102,7 @@ func withUnauthenticatedFlow(fn func(ctx context.Context, flow *bleflows.Flow) e
 	if err = ble.ScanForDevice(deviceId, 10*time.Second); err != nil {
 		return fmt.Errorf("failed to scan for device: %w", err)
 	}
-	flow, err := bleflows.NewUnauthenticatedFlow(ble, deviceId, viperAuthStore{})
+	flow, err := bleflows.NewUnauthenticatedFlow(ble, deviceId, authstore.New(viper.GetViper()))
 	if err != nil {
 		return fmt.Errorf("failed to create BLE flow: %w", err)
 	}

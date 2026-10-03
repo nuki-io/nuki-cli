@@ -1,4 +1,4 @@
-package cmd
+package authstore
 
 import (
 	"encoding/hex"
@@ -8,9 +8,15 @@ import (
 	"github.com/spf13/viper"
 )
 
-// viperAuthStore implements bleflows.AuthStore using viper.
-// Persistence is handled by cobra.OnFinalize → viper.WriteConfig in root.go.
-type viperAuthStore struct{}
+// ViperStore implements bleflows.AuthStore using viper.
+// Store only updates v in memory; writing the config file is up to the caller.
+type ViperStore struct {
+	v *viper.Viper
+}
+
+func New(v *viper.Viper) *ViperStore {
+	return &ViperStore{v: v}
+}
 
 type authorizeContextStorage struct {
 	CliPublicKey  string
@@ -63,18 +69,18 @@ func storageToContext(s *authorizeContextStorage) *bleflows.AuthorizeContext {
 	return ac
 }
 
-func (viperAuthStore) Load(deviceId string) (*bleflows.AuthorizeContext, error) {
+func (s *ViperStore) Load(deviceId string) (*bleflows.AuthorizeContext, error) {
 	cfgKey := fmt.Sprintf("authorizations.%s", deviceId)
-	if !viper.IsSet(cfgKey) {
+	if !s.v.IsSet(cfgKey) {
 		return nil, fmt.Errorf("no authorization for device with id %s found", deviceId)
 	}
-	s := &authorizeContextStorage{}
-	viper.UnmarshalKey(cfgKey, s)
-	return storageToContext(s), nil
+	st := &authorizeContextStorage{}
+	s.v.UnmarshalKey(cfgKey, st)
+	return storageToContext(st), nil
 }
 
-func (viperAuthStore) Store(deviceId string, ctx *bleflows.AuthorizeContext) error {
+func (s *ViperStore) Store(deviceId string, ctx *bleflows.AuthorizeContext) error {
 	cfgKey := fmt.Sprintf("authorizations.%s", deviceId)
-	viper.Set(cfgKey, contextToStorage(ctx))
+	s.v.Set(cfgKey, contextToStorage(ctx))
 	return nil
 }
