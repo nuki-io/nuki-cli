@@ -1,6 +1,7 @@
 package nukible
 
 import (
+	"errors"
 	"log/slog"
 	"strings"
 	"time"
@@ -48,6 +49,11 @@ func (n *NukiBle) Connect(addr bluetooth.Address) (*Device, error) {
 	})
 	if err != nil {
 		return nil, err
+	}
+	// On darwin, a late disconnect event from a previous connection completes Connect
+	// with an empty device and no error.
+	if device == (bluetooth.Device{}) {
+		return nil, errors.New("connect returned no device, a previous disconnect may still be in progress")
 	}
 	return &Device{
 		btDev: device,
