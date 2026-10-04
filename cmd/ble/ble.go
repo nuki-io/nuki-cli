@@ -5,14 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"runtime"
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
 	parentcmd "github.com/nuki-io/nuki-cli/cmd"
 	"github.com/nuki-io/nuki-cli/internal/authstore"
 	"github.com/nuki-io/nuki-cli/pkg/bleflows"
-	"github.com/nuki-io/nuki-cli/pkg/nukible"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -69,26 +67,16 @@ func mustDeviceId(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// withAuthenticatedFlow creates a BLE adapter, establishes an authenticated flow,
-// and calls fn with a timeout-bounded context. The device is disconnected after fn returns.
+// withAuthenticatedFlow establishes an authenticated flow and calls fn with a timeout-bounded context. The device is disconnected after fn returns.
 func withAuthenticatedFlow(fn func(ctx context.Context, flow *bleflows.Flow) error) error {
 	return withAuthenticatedFlowTimeout(bleTimeout, fn)
 }
 
 // withAuthenticatedFlowTimeout is withAuthenticatedFlow for commands that may need longer than bleTimeout.
 func withAuthenticatedFlowTimeout(timeout time.Duration, fn func(ctx context.Context, flow *bleflows.Flow) error) error {
-	ble, err := nukible.NewNukiBle()
+	flow, err := bleflows.ConnectAuthenticated(deviceId, authstore.New(viper.GetViper()))
 	if err != nil {
-		return fmt.Errorf("failed to enable bluetooth: %w", err)
-	}
-	if runtime.GOOS == "linux" {
-		if err = ble.ScanForDevice(deviceId, 10*time.Second); err != nil {
-			return fmt.Errorf("failed to scan for device: %w", err)
-		}
-	}
-	flow, err := bleflows.NewAuthenticatedFlow(ble, deviceId, authstore.New(viper.GetViper()))
-	if err != nil {
-		return fmt.Errorf("failed to create BLE flow: %w", err)
+		return err
 	}
 	defer flow.DisconnectDevice()
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -96,20 +84,12 @@ func withAuthenticatedFlowTimeout(timeout time.Duration, fn func(ctx context.Con
 	return fn(ctx, flow)
 }
 
-// withUnauthenticatedFlow creates a BLE adapter, scans for the device (since it is not yet known),
-// establishes an unauthenticated flow, and calls fn with a timeout-bounded context.
-// The flow is disconnected after fn returns.
+// withUnauthenticatedFlow establishes an unauthenticated flow for pairing and calls fn
+// with a timeout-bounded context. The flow is disconnected after fn returns.
 func withUnauthenticatedFlow(fn func(ctx context.Context, flow *bleflows.Flow) error) error {
-	ble, err := nukible.NewNukiBle()
+	flow, err := bleflows.ConnectUnauthenticated(deviceId, authstore.New(viper.GetViper()))
 	if err != nil {
-		return fmt.Errorf("failed to enable bluetooth: %w", err)
-	}
-	if err = ble.ScanForDevice(deviceId, 10*time.Second); err != nil {
-		return fmt.Errorf("failed to scan for device: %w", err)
-	}
-	flow, err := bleflows.NewUnauthenticatedFlow(ble, deviceId, authstore.New(viper.GetViper()))
-	if err != nil {
-		return fmt.Errorf("failed to create BLE flow: %w", err)
+		return err
 	}
 	defer flow.DisconnectDevice()
 	ctx, cancel := context.WithTimeout(context.Background(), bleTimeout)

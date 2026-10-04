@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"runtime"
+	"time"
 
 	"github.com/nuki-io/nuki-cli/pkg/blecommands"
 	"github.com/nuki-io/nuki-cli/pkg/nukible"
@@ -16,6 +18,43 @@ type Flow struct {
 	authCtx *AuthorizeContext
 	store   AuthStore
 	id      string
+}
+
+const scanTimeout = 10 * time.Second
+
+// ConnectAuthenticated enables the BLE adapter and returns an authenticated Flow for a paired device.
+func ConnectAuthenticated(id string, store AuthStore) (*Flow, error) {
+	ble, err := nukible.NewNukiBle()
+	if err != nil {
+		return nil, fmt.Errorf("failed to enable bluetooth: %w", err)
+	}
+	// Linux can only connect to devices found by a scan, macOS connects by ID directly.
+	if runtime.GOOS == "linux" {
+		if err = ble.ScanForDevice(id, scanTimeout); err != nil {
+			return nil, fmt.Errorf("failed to scan for device: %w", err)
+		}
+	}
+	flow, err := NewAuthenticatedFlow(ble, id, store)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create BLE flow: %w", err)
+	}
+	return flow, nil
+}
+
+// ConnectUnauthenticated enables the BLE adapter, scans for the device and returns a Flow for pairing.
+func ConnectUnauthenticated(id string, store AuthStore) (*Flow, error) {
+	ble, err := nukible.NewNukiBle()
+	if err != nil {
+		return nil, fmt.Errorf("failed to enable bluetooth: %w", err)
+	}
+	if err = ble.ScanForDevice(id, scanTimeout); err != nil {
+		return nil, fmt.Errorf("failed to scan for device: %w", err)
+	}
+	flow, err := NewUnauthenticatedFlow(ble, id, store)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create BLE flow: %w", err)
+	}
+	return flow, nil
 }
 
 // NewAuthenticatedFlow creates a new Flow instance for a Nuki device that was already paired.

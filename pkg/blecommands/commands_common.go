@@ -46,6 +46,22 @@ func (c *RequestData) GetPayload() []byte {
 	return payload
 }
 
+var _ Request = &RawRequest{}
+
+// RawRequest sends an arbitrary command, for codes without a dedicated type.
+type RawRequest struct {
+	Code    CommandCode
+	Payload []byte
+}
+
+func (c *RawRequest) GetCommandCode() CommandCode {
+	return c.Code
+}
+
+func (c *RawRequest) GetPayload() []byte {
+	return c.Payload
+}
+
 var _ Response = &Status{}
 
 type Status struct {
