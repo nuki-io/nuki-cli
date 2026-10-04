@@ -130,19 +130,67 @@ func (f *Flow) DisconnectDevice() error {
 // performSimpleOp sends a command that requires a challenge+PIN and waits for StatusComplete.
 // The caller provides an already-built request (with nonce and pin already set).
 func (f *Flow) performSimpleOp(ctx context.Context, req blecommands.Request) error {
+	return f.exchange(ctx, req, nil)
+}
+
+// responseHandler receives each non-final response. Returning true ends the exchange early,
+// for commands where the device does not always follow its answer with StatusComplete.
+type responseHandler func(blecommands.Response) (done bool)
+
+// exchange sends an encrypted request and passes each response to handle (if non-nil)
+// until the device reports StatusComplete or handle returns true.
+func (f *Flow) exchange(ctx context.Context, req blecommands.Request, handle responseHandler) error {
 	msg := f.handler.ToEncryptedMessage(req, GetNonce24())
 	ch, stop := f.device.WriteUsdioStream(ctx, msg)
 	defer stop()
 
+	if err := receiveUntilComplete(ctx, ch, f.handler.FromEncryptedDeviceResponse, handle); err != nil {
+		return fmt.Errorf("%s: %w", req.GetCommandCode(), err)
+	}
+	return nil
+}
+
+// collectResponses sends req and returns every *T response received before StatusComplete.
+func collectResponses[T any, PT responsePtr[T]](ctx context.Context, f *Flow, req blecommands.Request) ([]T, error) {
+	var items []T
+	if err := f.exchange(ctx, req, collectInto[T, PT](&items)); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+type responsePtr[T any] interface {
+	*T
+	blecommands.Response
+}
+
+func collectInto[T any, PT responsePtr[T]](items *[]T) responseHandler {
+	return func(res blecommands.Response) bool {
+		if r, ok := res.(PT); ok {
+			*items = append(*items, *r)
+		}
+		return false
+	}
+}
+
+func receiveUntilComplete(
+	ctx context.Context,
+	ch <-chan []byte,
+	decode func([]byte) (blecommands.Response, error),
+	handle responseHandler,
+) error {
 	for {
 		select {
 		case buf := <-ch:
-			res, err := f.handler.FromEncryptedDeviceResponse(buf)
+			res, err := decode(buf)
 			if err != nil {
-				return fmt.Errorf("failed to decrypt response: %w", err)
+				return err
 			}
-			slog.Debug("Received response", "cmd", res.GetCommandCode())
+			slog.Debug("Received response", "cmd", res.GetCommandCode(), "payload", res)
 			if s, ok := res.(*blecommands.Status); ok && s.Status == blecommands.StatusComplete {
+				return nil
+			}
+			if handle != nil && handle(res) {
 				return nil
 			}
 		case <-ctx.Done():

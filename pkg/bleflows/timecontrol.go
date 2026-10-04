@@ -3,7 +3,6 @@ package bleflows
 import (
 	"context"
 	"fmt"
-	"log/slog"
 
 	"github.com/nuki-io/nuki-cli/pkg/blecommands"
 )
@@ -13,35 +12,10 @@ func (f *Flow) GetTimeControlEntries(ctx context.Context) ([]blecommands.TimeCon
 	if err != nil {
 		return nil, fmt.Errorf("failed to get challenge: %w", err)
 	}
-	req := &blecommands.RequestTimeControlEntries{
+	return collectResponses[blecommands.TimeControlEntry](ctx, f, &blecommands.RequestTimeControlEntries{
 		Nonce:       nonce,
 		SecurityPin: blecommands.NewPin(f.authCtx.Pin),
-	}
-	msg := f.handler.ToEncryptedMessage(req, GetNonce24())
-	ch, stop := f.device.WriteUsdioStream(ctx, msg)
-	defer stop()
-
-	var entries []blecommands.TimeControlEntry
-	for {
-		select {
-		case buf := <-ch:
-			res, err := f.handler.FromEncryptedDeviceResponse(buf)
-			if err != nil {
-				return nil, fmt.Errorf("failed to decrypt time control response: %w", err)
-			}
-			slog.Debug("Received time control response", "cmd", res.GetCommandCode())
-			switch r := res.(type) {
-			case *blecommands.TimeControlEntry:
-				entries = append(entries, *r)
-			case *blecommands.Status:
-				if r.Status == blecommands.StatusComplete {
-					return entries, nil
-				}
-			}
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		}
-	}
+	})
 }
 
 func (f *Flow) AddTimeControlEntry(ctx context.Context, weekdays, hour, minute byte, action blecommands.Action) (byte, error) {
@@ -57,30 +31,16 @@ func (f *Flow) AddTimeControlEntry(ctx context.Context, weekdays, hour, minute b
 		Nonce:       nonce,
 		SecurityPin: blecommands.NewPin(f.authCtx.Pin),
 	}
-	msg := f.handler.ToEncryptedMessage(req, GetNonce24())
-	ch, stop := f.device.WriteUsdioStream(ctx, msg)
-	defer stop()
-
-	for {
-		select {
-		case buf := <-ch:
-			res, err := f.handler.FromEncryptedDeviceResponse(buf)
-			if err != nil {
-				return 0, fmt.Errorf("failed to decrypt add time control response: %w", err)
-			}
-			slog.Debug("Received add time control response", "cmd", res.GetCommandCode())
-			switch r := res.(type) {
-			case *blecommands.TimeControlEntryID:
-				return r.EntryID, nil
-			case *blecommands.Status:
-				if r.Status == blecommands.StatusComplete {
-					return 0, nil
-				}
-			}
-		case <-ctx.Done():
-			return 0, ctx.Err()
+	var entryID byte
+	// Unlike AddKeypadCode, a StatusComplete follows the ID and must be consumed,
+	// or the next command reads it as its own response.
+	err = f.exchange(ctx, req, func(res blecommands.Response) bool {
+		if r, ok := res.(*blecommands.TimeControlEntryID); ok {
+			entryID = r.EntryID
 		}
-	}
+		return false
+	})
+	return entryID, err
 }
 
 func (f *Flow) RemoveTimeControlEntry(ctx context.Context, entryID byte) error {

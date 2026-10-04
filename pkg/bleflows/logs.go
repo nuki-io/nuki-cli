@@ -3,7 +3,6 @@ package bleflows
 import (
 	"context"
 	"fmt"
-	"log/slog"
 
 	"github.com/nuki-io/nuki-cli/pkg/blecommands"
 )
@@ -34,32 +33,18 @@ func (f *Flow) GetLogs(ctx context.Context, start int, count int, withCount bool
 		TotalCount:  withCount,
 		SecurityPin: blecommands.NewPin(f.authCtx.Pin),
 	}
-	msg := f.handler.ToEncryptedMessage(cfg, GetNonce24())
-	ch, stop := f.device.WriteUsdioStream(ctx, msg)
-	defer stop()
-
 	var entries []blecommands.LogEntry
 	var logCount *blecommands.LogEntryCount
-	for {
-		select {
-		case buf := <-ch:
-			res, err := f.handler.FromEncryptedDeviceResponse(buf)
-			if err != nil {
-				return nil, nil, fmt.Errorf("failed to decrypt log response: %w", err)
-			}
-			slog.Debug("Received log entry response", "cmd", res.GetCommandCode(), "payload", res)
-			switch r := res.(type) {
-			case *blecommands.LogEntry:
-				entries = append(entries, *r)
-			case *blecommands.LogEntryCount:
-				logCount = r
-			case *blecommands.Status:
-				if r.Status == blecommands.StatusComplete {
-					return entries, logCount, nil
-				}
-			}
-		case <-ctx.Done():
-			return nil, nil, ctx.Err()
+	collectEntries := collectInto(&entries)
+	err = f.exchange(ctx, cfg, func(res blecommands.Response) bool {
+		if r, ok := res.(*blecommands.LogEntryCount); ok {
+			logCount = r
+			return false
 		}
+		return collectEntries(res)
+	})
+	if err != nil {
+		return nil, nil, err
 	}
+	return entries, logCount, nil
 }
