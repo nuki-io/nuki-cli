@@ -4,11 +4,14 @@ import (
 	"log/slog"
 	"os"
 	"path"
+	"path/filepath"
 
 	"github.com/nuki-io/nuki-cli/internal"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
+
+const configPerm os.FileMode = 0o600
 
 var (
 
@@ -53,8 +56,11 @@ func init() {
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
 	if cfgFile != "" {
-		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
+		// viper derives the type from the extension and cannot read or write the file without one.
+		if filepath.Ext(cfgFile) == "" {
+			viper.SetConfigType("yaml")
+		}
 	} else {
 		// Find home directory.
 		home, err := os.UserHomeDir()
@@ -66,6 +72,8 @@ func initConfig() {
 		viper.SetConfigFile(path.Join(home, ".nukictl"))
 	}
 
+	// The config holds device keys, so it must not be readable by others.
+	viper.SetConfigPermissions(configPerm)
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.
@@ -87,5 +95,10 @@ func writeConfig() {
 	err := viper.WriteConfig()
 	if err != nil {
 		slog.Error("Failed to persist configuration to file", "err", err)
+		return
+	}
+	// viper applies its permissions only when creating the file, so fix up existing ones.
+	if err := os.Chmod(viper.ConfigFileUsed(), configPerm); err != nil {
+		slog.Error("Failed to restrict configuration file permissions", "err", err)
 	}
 }
