@@ -54,9 +54,11 @@ type AdvancedConfig struct {
 	AutoLockEnabled                   bool    `json:"autoLockEnabled"`
 	ImmediateAutoLockEnabled          bool    `json:"immediateAutoLockEnabled"`
 	AutoUpdateEnabled                 bool    `json:"autoUpdateEnabled"`
-	// Smart Lock Ultra only
+	// Not reported by older devices
 	MotorSpeed                     uint8 `json:"motorSpeed,omitempty"`
 	EnableSlowSpeedDuringNightMode bool  `json:"enableSlowSpeedDuringNightMode,omitempty"`
+
+	hasMotorFields bool
 }
 
 func (c *AdvancedConfig) GetCommandCode() CommandCode { return CommandAdvancedConfig }
@@ -104,6 +106,7 @@ func (c *AdvancedConfig) FromMessage(b []byte) error {
 	}
 	if len(b) > 32 {
 		c.EnableSlowSpeedDuringNightMode = b[32] != 0
+		c.hasMotorFields = true
 	}
 	return nil
 }
@@ -136,8 +139,13 @@ type SetAdvancedConfig struct {
 	AutoLockEnabled                   bool
 	ImmediateAutoLockEnabled          bool
 	AutoUpdateEnabled                 bool
-	Nonce                             []byte
-	SecurityPin                       Pin
+	// MotorFields sends MotorSpeed and EnableSlowSpeedDuringNightMode. Devices that report
+	// them in AdvancedConfig reject a payload without them (ERROR_BAD_LENGTH).
+	MotorFields                    bool
+	MotorSpeed                     uint8
+	EnableSlowSpeedDuringNightMode bool
+	Nonce                          []byte
+	SecurityPin                    Pin
 }
 
 // ToSetAdvancedConfig returns a request that writes back c unchanged. Nonce and PIN are left empty.
@@ -165,11 +173,18 @@ func (c *AdvancedConfig) ToSetAdvancedConfig() *SetAdvancedConfig {
 		AutoLockEnabled:                   c.AutoLockEnabled,
 		ImmediateAutoLockEnabled:          c.ImmediateAutoLockEnabled,
 		AutoUpdateEnabled:                 c.AutoUpdateEnabled,
+		MotorFields:                       c.hasMotorFields,
+		MotorSpeed:                        c.MotorSpeed,
+		EnableSlowSpeedDuringNightMode:    c.EnableSlowSpeedDuringNightMode,
 	}
 }
 
 func (c *SetAdvancedConfig) GetCommandCode() CommandCode { return CommandSetAdvancedConfig }
 func (c *SetAdvancedConfig) GetPayload() []byte {
+	var motor []byte
+	if c.MotorFields {
+		motor = []byte{c.MotorSpeed, boolToByte(c.EnableSlowSpeedDuringNightMode)}
+	}
 	return slices.Concat(
 		binary.LittleEndian.AppendUint16(nil, uint16(c.UnlockedPositionOffsetDegrees)),
 		binary.LittleEndian.AppendUint16(nil, uint16(c.LockedPositionOffsetDegrees)),
@@ -190,6 +205,7 @@ func (c *SetAdvancedConfig) GetPayload() []byte {
 			boolToByte(c.ImmediateAutoLockEnabled),
 			boolToByte(c.AutoUpdateEnabled),
 		},
+		motor,
 		c.Nonce,
 		c.SecurityPin.GetPinBytes(),
 	)

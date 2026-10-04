@@ -14,8 +14,10 @@ type Action uint8
 func (a Action) MarshalText() ([]byte, error) { return []byte(a.String()), nil }
 
 const (
-	Unlock Action = 0x01
-	Lock   Action = 0x02
+	// NoAction is reported as the last lock action before the device performed any.
+	NoAction Action = 0x00
+	Unlock   Action = 0x01
+	Lock     Action = 0x02
 
 	Unlatch          Action = 0x03
 	LockAndGo        Action = 0x04
@@ -328,7 +330,7 @@ type KeyturnerStates struct {
 
 	ConfigUpdateCount              byte                   `json:"configUpdateCount"`
 	LockNGoTimer                   byte                   `json:"lockNGoTimer"`
-	LastLockAction                 LockState              `json:"lastLockAction"`
+	LastLockAction                 Action                 `json:"lastLockAction"`
 	LastLockActionTrigger          Trigger                `json:"lastLockActionTrigger"`
 	LastLockActionCompletionStatus StatusCode             `json:"lastLockActionCompletionStatus"`
 	DoorSensorState                DoorSensorState        `json:"doorSensorState"`
@@ -359,7 +361,7 @@ func (c *KeyturnerStates) FromMessage(b []byte) error {
 	c.BatteryPercentage = int(b[12]>>2) * 2
 	c.ConfigUpdateCount = b[13]
 	c.LockNGoTimer = b[14]
-	c.LastLockAction = LockState(b[15])
+	c.LastLockAction = Action(b[15])
 	c.LastLockActionTrigger = Trigger(b[16])
 	c.LastLockActionCompletionStatus = StatusCode(b[17])
 	c.DoorSensorState = DoorSensorState(b[18])

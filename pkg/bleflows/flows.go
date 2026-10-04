@@ -104,7 +104,11 @@ func (f *Flow) getChallenge(ctx context.Context) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get challenge from device: %w", err)
 	}
-	return res.(*blecommands.Challenge).Nonce, nil
+	c, ok := res.(*blecommands.Challenge)
+	if !ok {
+		return nil, fmt.Errorf("expected challenge from device, got %s", res.GetCommandCode())
+	}
+	return c.Nonce, nil
 }
 
 func (f *Flow) UpdateAuthCtxFromConfig(cfg *blecommands.Config) {

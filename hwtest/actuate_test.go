@@ -59,11 +59,14 @@ func testLockNGo(t *testing.T) {
 	adv, err := flow.GetAdvancedConfig(ctx)
 	require.NoError(t, err)
 
+	// The device reports completion only after the whole cycle: unlock, timeout, lock.
+	start := time.Now()
 	require.NoError(t, lockAction(ctx, flow, blecommands.LockAndGo))
-	_, err = waitForLockState(ctx, flow, motorTimeout, blecommands.LockStateUnlockedLockNGo)
+	require.GreaterOrEqual(t, time.Since(start), time.Duration(adv.LockNGoTimeout)*time.Second,
+		"lock 'n' go completed before its timeout")
+	s, err := waitForLockState(ctx, flow, motorTimeout, blecommands.LockStateLocked)
 	require.NoError(t, err)
-	_, err = waitForLockState(ctx, flow, time.Duration(adv.LockNGoTimeout)*time.Second+motorTimeout, blecommands.LockStateLocked)
-	require.NoError(t, err)
+	require.Equal(t, blecommands.LockAndGo, s.LastLockAction)
 }
 
 // testUnlatch opens the door, so it needs an explicit opt-in on top of the actuate level.

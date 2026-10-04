@@ -76,10 +76,8 @@ func testSetAdvancedConfig(t *testing.T) {
 	got, err := flow.GetAdvancedConfig(ctx)
 	require.NoError(t, err)
 	require.Equal(t, &expected, got.ToSetAdvancedConfig())
-	// Not part of SetAdvancedConfig, so a write must leave them alone.
+	// Read-only, so a write must leave it alone.
 	require.Equal(t, orig.TotalDegrees, got.TotalDegrees)
-	require.Equal(t, orig.MotorSpeed, got.MotorSpeed)
-	require.Equal(t, orig.EnableSlowSpeedDuringNightMode, got.EnableSlowSpeedDuringNightMode)
 }
 
 func testUpdateTime(t *testing.T) {

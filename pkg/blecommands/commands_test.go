@@ -43,6 +43,33 @@ func TestEncryptedRequestChallenge(t *testing.T) {
 	require.Equal(t, want, msg)
 }
 
+// SetAdvancedConfig must mirror the length of the device's AdvancedConfig, or the device
+// answers ERROR_BAD_LENGTH.
+func TestSetAdvancedConfigMirrorsMotorFields(t *testing.T) {
+	nonce := make([]byte, 32)
+	for _, tc := range []struct {
+		name     string
+		response []byte
+		wantTail []byte
+	}{
+		{"without motor fields", make([]byte, 31), []byte{}},
+		{"with motor fields", append(make([]byte, 31), 0x02, 0x01), []byte{0x02, 0x01}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := &blecommands.AdvancedConfig{}
+			require.NoError(t, cfg.FromMessage(tc.response))
+			req := cfg.ToSetAdvancedConfig()
+			req.Nonce = nonce
+			req.SecurityPin = blecommands.NewPin("1234")
+
+			// Same fields minus the read-only TotalDegrees, then nonce and 2-byte PIN.
+			payload := req.GetPayload()
+			require.Len(t, payload, len(tc.response)-2+32+2)
+			require.Equal(t, tc.wantTail, payload[29:len(payload)-34], "motor fields")
+		})
+	}
+}
+
 func TestAuthorizationEntryUnsetLastActive(t *testing.T) {
 	b := make([]byte, 56)
 	copy(b[39:46], []byte{0xEA, 0x07, 0x05, 0x06, 0x0E, 0x36, 0x2A}) // created 2026-05-06 14:54:42, never active
